@@ -63,7 +63,7 @@ sequenceDiagram
     alt passed or last attempt
       Crew-->>CS: LessonPlanResponse
     else
-      Note over Crew: append shortcomings to plan.description; retry
+      Note over Crew: append shortcomings to plan.description, retry
     end
   end
 

@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, signal, inject, PLATFORM_ID, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
@@ -85,6 +86,7 @@ export class LessonPlan implements OnInit {
   private docs = inject(DocumentService);
   private jobsService = inject(JobsService);
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private destroyRef = inject(DestroyRef);
 
   /**
    * localStorage key for the most recent generated-but-unsaved plan.
@@ -112,21 +114,23 @@ export class LessonPlan implements OnInit {
     // navigation (the BG worker keeps running regardless of UI state).
     // If found, show the banner + auto-populate the result on completion
     // so the user doesn't lose work that's already been billed for.
-    this.jobsService.findInFlight('LessonPlanGenerate').subscribe({
-      next: (existing) => {
-        if (existing) {
-          this.isLoading.set(true);
-          this.generationPhase.set(existing.status === 1 /* Running */ ? 'generating' : 'queued');
-          this.consumePlanJobEvents(this.jobsService.subscribeToExistingJob(existing.id));
-        } else {
-          // No live job — but a previously-completed plan may still be
-          // sitting unsaved in localStorage. Restore so the user can save
-          // it without re-paying for generation.
-          this.loadPendingPlan();
-        }
-      },
-      error: () => this.loadPendingPlan(),
-    });
+    this.jobsService.findInFlight('LessonPlanGenerate')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (existing) => {
+          if (existing) {
+            this.isLoading.set(true);
+            this.generationPhase.set(existing.status === 1 /* Running */ ? 'generating' : 'queued');
+            this.consumePlanJobEvents(this.jobsService.subscribeToExistingJob(existing.id));
+          } else {
+            // No live job — but a previously-completed plan may still be
+            // sitting unsaved in localStorage. Restore so the user can save
+            // it without re-paying for generation.
+            this.loadPendingPlan();
+          }
+        },
+        error: () => this.loadPendingPlan(),
+      });
 
     // Pre-select a document if we arrived via /documents → "Generate plan".
     const docIdParam = this.route.snapshot.queryParamMap.get('documentId');
@@ -203,9 +207,14 @@ export class LessonPlan implements OnInit {
    * Shared event handler for both fresh generations and resumed in-flight
    * jobs (after navigation). Drives the banner, populates `generatedPlan`
    * on Completed, surfaces errors on Failed.
+   *
+   * `takeUntilDestroyed` is critical here: without it, the SignalR `next`
+   * callback survives navigation and fires for every revisit's resumed
+   * subscription too — duplicate `savePendingPlan` writes, duplicate
+   * `notify.success` toasts, double-counted bell entries.
    */
   private consumePlanJobEvents(stream$: ReturnType<LessonPlanService['generateLessonPlan']>): void {
-    stream$.subscribe({
+    stream$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (event) => {
         if (event.status === JobStatus.Running) {
           this.generationPhase.set('generating');

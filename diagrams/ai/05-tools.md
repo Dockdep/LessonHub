@@ -84,7 +84,7 @@ flowchart TD
   src[Raw source text]
   md{is_markdown<br/>and has headings?}
   hsplit[_split_markdown_by_headings]
-  flat[Single section, header_path=""]
+  flat["Single section, header_path empty"]
   win[_window_split<br/>~800 words, ~100 overlap]
   chunks[list~Chunk~]
 

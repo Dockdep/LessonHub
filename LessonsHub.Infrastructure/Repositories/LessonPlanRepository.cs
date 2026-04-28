@@ -26,12 +26,13 @@ public sealed class LessonPlanRepository : RepositoryBase, ILessonPlanRepository
             .FirstOrDefaultAsync(lp => lp.Id == planId && lp.UserId == userId, ct);
 
     public Task<LessonPlan?> GetForReadAsync(int planId, int userId, CancellationToken ct = default) =>
-        _db.LessonPlans.FirstOrDefaultAsync(lp =>
+        _db.LessonPlans.AsNoTracking().FirstOrDefaultAsync(lp =>
             lp.Id == planId &&
             (lp.UserId == userId || lp.Shares.Any(s => s.UserId == userId)), ct);
 
     public Task<LessonPlan?> GetForReadWithLessonsAsync(int planId, int userId, CancellationToken ct = default) =>
         _db.LessonPlans
+            .AsNoTracking()
             .Include(lp => lp.Lessons)
             .Include(lp => lp.User)
             .FirstOrDefaultAsync(lp =>
@@ -40,6 +41,7 @@ public sealed class LessonPlanRepository : RepositoryBase, ILessonPlanRepository
 
     public Task<List<LessonPlan>> GetSharedWithUserAsync(int userId, CancellationToken ct = default) =>
         _db.LessonPlanShares
+            .AsNoTracking()
             .Where(s => s.UserId == userId)
             .Include(s => s.LessonPlan).ThenInclude(lp => lp!.Lessons)
             .Include(s => s.LessonPlan).ThenInclude(lp => lp!.User)
@@ -48,6 +50,7 @@ public sealed class LessonPlanRepository : RepositoryBase, ILessonPlanRepository
 
     public Task<List<LessonPlan>> GetOwnedWithLessonCountAsync(int userId, CancellationToken ct = default) =>
         _db.LessonPlans
+            .AsNoTracking()
             .Include(lp => lp.Lessons)
             .Where(lp => lp.UserId == userId)
             .ToListAsync(ct);

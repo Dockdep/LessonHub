@@ -13,7 +13,7 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
 
     public Task<User?> GetByEmailAsync(string email, CancellationToken ct = default) =>
-        _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Email == email, ct);
 
     public Task<User?> GetByGoogleIdAsync(string googleId, CancellationToken ct = default) =>
         _db.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId, ct);

@@ -11,6 +11,7 @@ public sealed class LessonPlanShareRepository : RepositoryBase, ILessonPlanShare
 
     public Task<List<LessonPlanShare>> GetByPlanAsync(int planId, CancellationToken ct = default) =>
         _db.LessonPlanShares
+            .AsNoTracking()
             .Where(s => s.LessonPlanId == planId)
             .Include(s => s.User)
             .OrderBy(s => s.User!.Email)

@@ -32,12 +32,12 @@ sequenceDiagram
   DS->>DR: SaveChangesAsync (gets Id)
   DS->>Storage: SaveAsync(userId, docId, fileName, stream, contentType)
   alt prod
-    Storage->>FS: write to gs://&lt;project&gt;-documents/&lt;userId&gt;/&lt;docId&gt;/&lt;name&gt;
+    Storage->>FS: write to gs://[project]-documents/[userId]/[docId]/[name]
   else local-dev
     Storage->>FS: write to ./uploads/{userId}/{docId}/{name}
   end
   Storage-->>DS: storageUri
-  DS->>DR: doc.StorageUri = storageUri; SaveChangesAsync
+  DS->>DR: doc.StorageUri = storageUri, SaveChangesAsync
 
   DS->>RAG: IngestAsync(docId, storageUri, isMarkdown, apiKey)
   RAG->>Route: POST /api/rag/ingest
@@ -65,7 +65,7 @@ sequenceDiagram
 
   Route-->>RAG: { documentId, chunkCount }
   RAG-->>DS: response
-  DS->>DR: doc.IngestionStatus = "Ingested"; doc.ChunkCount = N
+  DS->>DR: doc.IngestionStatus = "Ingested", doc.ChunkCount = N
   DS->>DR: SaveChangesAsync
   DS-->>DC: Ok(DocumentDto)
   DC-->>UI: 200 (ready)
@@ -96,7 +96,7 @@ flowchart LR
   src[source_text]
   md{is_markdown<br/>and has headings?}:::step
   hsplit[_split_markdown_by_headings<br/>per-section]:::step
-  flat[Single section,<br/>header_path = ""]:::step
+  flat["Single section,<br/>header_path empty"]:::step
   win[_window_split<br/>~800 words<br/>~100 word overlap<br/>min 50 words]:::step
   out[list~Chunk~]
 

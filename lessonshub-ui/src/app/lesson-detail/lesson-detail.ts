@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, inject, ViewChildren, QueryList, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, signal, inject, ViewChildren, QueryList, PLATFORM_ID, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
@@ -81,6 +82,7 @@ export class LessonDetail implements OnInit {
 
   private notify = inject(NotificationService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private destroyRef = inject(DestroyRef);
 
   @ViewChildren(MatExpansionPanel) exercisePanels!: QueryList<MatExpansionPanel>;
 
@@ -175,33 +177,35 @@ export class LessonDetail implements OnInit {
     this.isGeneratingExercise.set(true);
     this.exercisePhase.set('queued');
     this.exerciseLabel.set('a new exercise');
-    this.lessonService.generateExercise(lesson.id, params.difficulty, params.comment).subscribe({
-      next: (event) => {
-        if (event.status === JobStatus.Running) {
-          this.exercisePhase.set('generating');
-          return;
-        }
-        if (event.status === JobStatus.Completed) {
-          const exercise = this.lessonService.parseExerciseResult(event);
-          if (exercise) {
-            lesson.exercises.push(exercise);
-            this.lesson.set({ ...lesson });
-            this.openNewPanel();
-            this.notify.success('Exercise ready.');
+    this.lessonService.generateExercise(lesson.id, params.difficulty, params.comment)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          if (event.status === JobStatus.Running) {
+            this.exercisePhase.set('generating');
+            return;
           }
+          if (event.status === JobStatus.Completed) {
+            const exercise = this.lessonService.parseExerciseResult(event);
+            if (exercise) {
+              lesson.exercises.push(exercise);
+              this.lesson.set({ ...lesson });
+              this.openNewPanel();
+              this.notify.success('Exercise ready.');
+            }
+            this.isGeneratingExercise.set(false);
+            this.exercisePhase.set('');
+          }
+        },
+        error: (err) => {
+          console.error('Error generating exercise', err);
+          const detail = err.error?.message || err.message || 'unknown error';
+          this.error.set('Failed to generate exercise: ' + detail);
+          this.notify.error('Exercise generation failed: ' + detail);
           this.isGeneratingExercise.set(false);
           this.exercisePhase.set('');
         }
-      },
-      error: (err) => {
-        console.error('Error generating exercise', err);
-        const detail = err.error?.message || err.message || 'unknown error';
-        this.error.set('Failed to generate exercise: ' + detail);
-        this.notify.error('Exercise generation failed: ' + detail);
-        this.isGeneratingExercise.set(false);
-        this.exercisePhase.set('');
-      }
-    });
+      });
   }
 
   private retryExercise(params: GenerateExerciseDialogResult): void {
@@ -211,33 +215,35 @@ export class LessonDetail implements OnInit {
     this.isGeneratingExercise.set(true);
     this.exercisePhase.set('queued');
     this.exerciseLabel.set('a remedial exercise');
-    this.lessonService.retryExercise(lesson.id, params.difficulty, params.review, params.comment).subscribe({
-      next: (event) => {
-        if (event.status === JobStatus.Running) {
-          this.exercisePhase.set('generating');
-          return;
-        }
-        if (event.status === JobStatus.Completed) {
-          const exercise = this.lessonService.parseExerciseResult(event);
-          if (exercise) {
-            lesson.exercises.push(exercise);
-            this.lesson.set({ ...lesson });
-            this.openNewPanel();
-            this.notify.success('Remedial exercise ready.');
+    this.lessonService.retryExercise(lesson.id, params.difficulty, params.review, params.comment)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          if (event.status === JobStatus.Running) {
+            this.exercisePhase.set('generating');
+            return;
           }
+          if (event.status === JobStatus.Completed) {
+            const exercise = this.lessonService.parseExerciseResult(event);
+            if (exercise) {
+              lesson.exercises.push(exercise);
+              this.lesson.set({ ...lesson });
+              this.openNewPanel();
+              this.notify.success('Remedial exercise ready.');
+            }
+            this.isGeneratingExercise.set(false);
+            this.exercisePhase.set('');
+          }
+        },
+        error: (err) => {
+          console.error('Error retrying exercise', err);
+          const detail = err.error?.message || err.message || 'unknown error';
+          this.error.set('Failed to generate exercise: ' + detail);
+          this.notify.error('Exercise retry failed: ' + detail);
           this.isGeneratingExercise.set(false);
           this.exercisePhase.set('');
         }
-      },
-      error: (err) => {
-        console.error('Error retrying exercise', err);
-        const detail = err.error?.message || err.message || 'unknown error';
-        this.error.set('Failed to generate exercise: ' + detail);
-        this.notify.error('Exercise retry failed: ' + detail);
-        this.isGeneratingExercise.set(false);
-        this.exercisePhase.set('');
-      }
-    });
+      });
   }
 
   private openNewPanel(): void {
@@ -255,32 +261,34 @@ export class LessonDetail implements OnInit {
     this.submittingExerciseId.set(exercise.id);
     this.exercisePhase.set('queued');
     this.exerciseLabel.set('your answer review');
-    this.lessonService.submitExerciseAnswer(exercise.id, answer).subscribe({
-      next: (event) => {
-        if (event.status === JobStatus.Running) {
-          this.exercisePhase.set('generating');
-          return;
-        }
-        if (event.status === JobStatus.Completed) {
-          const reviewed = this.lessonService.parseAnswerResult(event);
-          if (reviewed) {
-            exercise.answers.push(reviewed);
-            ctrl.setValue('');
-            this.notify.success('Your answer was reviewed.');
+    this.lessonService.submitExerciseAnswer(exercise.id, answer)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          if (event.status === JobStatus.Running) {
+            this.exercisePhase.set('generating');
+            return;
           }
+          if (event.status === JobStatus.Completed) {
+            const reviewed = this.lessonService.parseAnswerResult(event);
+            if (reviewed) {
+              exercise.answers.push(reviewed);
+              ctrl.setValue('');
+              this.notify.success('Your answer was reviewed.');
+            }
+            this.submittingExerciseId.set(null);
+            this.exercisePhase.set('');
+          }
+        },
+        error: (err) => {
+          console.error('Error submitting answer', err);
+          const detail = err.error?.message || err.message || 'unknown error';
+          this.error.set('Failed to submit answer: ' + detail);
+          this.notify.error('Answer review failed: ' + detail);
           this.submittingExerciseId.set(null);
           this.exercisePhase.set('');
         }
-      },
-      error: (err) => {
-        console.error('Error submitting answer', err);
-        const detail = err.error?.message || err.message || 'unknown error';
-        this.error.set('Failed to submit answer: ' + detail);
-        this.notify.error('Answer review failed: ' + detail);
-        this.submittingExerciseId.set(null);
-        this.exercisePhase.set('');
-      }
-    });
+      });
   }
 
   startEditingInfo(): void {
@@ -363,29 +371,31 @@ export class LessonDetail implements OnInit {
     this.regenerationPhase.set('queued');
     this.error.set('');
 
-    this.lessonService.regenerateContent(lesson.id, bypassDocCache).subscribe({
-      next: (event) => {
-        if (event.status === JobStatus.Running) {
-          this.regenerationPhase.set('generating');
-          return;
-        }
-        if (event.status === JobStatus.Completed) {
-          const updated = this.lessonService.parseLessonResult(event);
-          if (updated) {
-            this.lesson.set(updated);
-            this.notify.success('Lesson content regenerated!');
+    this.lessonService.regenerateContent(lesson.id, bypassDocCache)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (event) => {
+          if (event.status === JobStatus.Running) {
+            this.regenerationPhase.set('generating');
+            return;
           }
+          if (event.status === JobStatus.Completed) {
+            const updated = this.lessonService.parseLessonResult(event);
+            if (updated) {
+              this.lesson.set(updated);
+              this.notify.success('Lesson content regenerated!');
+            }
+            this.isRegenerating.set(false);
+            this.regenerationPhase.set('');
+          }
+        },
+        error: (err) => {
+          console.error('Error regenerating content', err);
+          this.notify.error('Failed to regenerate lesson.');
           this.isRegenerating.set(false);
           this.regenerationPhase.set('');
         }
-      },
-      error: (err) => {
-        console.error('Error regenerating content', err);
-        this.notify.error('Failed to regenerate lesson.');
-        this.isRegenerating.set(false);
-        this.regenerationPhase.set('');
-      }
-    });
+      });
   }
 
   /**
@@ -439,7 +449,7 @@ export class LessonDetail implements OnInit {
   private consumeExerciseJobEvents(stream$: ReturnType<LessonService['generateExercise']>): void {
     const lesson = this.lesson();
     if (!lesson) return;
-    stream$.subscribe({
+    stream$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (event) => {
         if (event.status === JobStatus.Running) {
           this.exercisePhase.set('generating');
@@ -496,7 +506,7 @@ export class LessonDetail implements OnInit {
   }
 
   private consumeContentJobEvents(stream$: ReturnType<LessonService['generateContent']>): void {
-    stream$.subscribe({
+    stream$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (event) => {
         if (event.status === JobStatus.Running) {
           this.regenerationPhase.set('generating');

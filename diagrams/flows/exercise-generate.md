@@ -56,7 +56,7 @@ sequenceDiagram
       alt passed or last
         Crew-->>CS_AI: LessonExerciseResponse { exercise }
       else
-        Note over Crew: append shortcomings to spec.comment; retry
+        Note over Crew: append shortcomings to spec.comment, retry
       end
     end
 

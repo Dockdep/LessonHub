@@ -11,6 +11,7 @@ public sealed class LessonDayRepository : RepositoryBase, ILessonDayRepository
 
     public Task<List<LessonDay>> GetByMonthAsync(int userId, DateTime startUtc, DateTime endUtcExclusive, CancellationToken ct = default) =>
         _db.LessonDays
+            .AsNoTracking()
             .Include(ld => ld.Lessons).ThenInclude(l => l.LessonPlan)
             .Where(ld => ld.UserId == userId && ld.Date >= startUtc && ld.Date < endUtcExclusive)
             .OrderBy(ld => ld.Date)
@@ -23,6 +24,7 @@ public sealed class LessonDayRepository : RepositoryBase, ILessonDayRepository
     {
         var nextDay = dateUtc.AddDays(1);
         return _db.LessonDays
+            .AsNoTracking()
             .Include(ld => ld.Lessons).ThenInclude(l => l.LessonPlan)
             .Where(ld => ld.UserId == userId && ld.Date >= dateUtc && ld.Date < nextDay)
             .FirstOrDefaultAsync(ct);

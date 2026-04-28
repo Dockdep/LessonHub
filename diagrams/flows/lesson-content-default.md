@@ -82,7 +82,7 @@ sequenceDiagram
     alt passed or last
       Crew-->>CS: LessonContentResponse { content }
     else
-      Note over Crew: append shortcomings to plan.description; retry
+      Note over Crew: append shortcomings to plan.description, retry
     end
   end
 ```
@@ -123,7 +123,7 @@ flowchart LR
   prev -. previous .-> cur
   next -. next .-> cur
 
-  cur --> prompt[content_writer<br/>sees prev/next as<br/>AdjacentLesson{name, description}]
+  cur --> prompt["content_writer<br/>sees prev/next as<br/>AdjacentLesson(name, description)"]
 ```
 
 [`LessonRepository.GetAdjacentAsync`](../../LessonsHub.Infrastructure/Repositories/LessonRepository.cs) finds the lessons with `LessonNumber < / > current` in the same plan. The writer uses these to (a) avoid repeating concepts the previous lesson covered and (b) foreshadow what's coming next when natural.

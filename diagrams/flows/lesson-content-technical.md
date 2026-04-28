@@ -53,7 +53,7 @@ sequenceDiagram
       Crew->>Crew: append format_sources_section(docs) to content
       Crew-->>CS: LessonContentResponse
     else
-      Note over Crew: feedback to plan.description; retry
+      Note over Crew: feedback to plan.description, retry
     end
   end
 ```
@@ -131,7 +131,7 @@ flowchart LR
   classDef c fill:#bbdefb,color:#1a1a1a
 
   q[Analyzer query]:::c
-  k[cache key:<br/>q|<lowercased query>]:::c
+  k["cache key:<br/>q | (lowercased query)"]:::c
   hit{cached and<br/>not expired?}:::c
   ddg[DDG + page fetch]:::c
   cache[(DocumentationCache)]:::c

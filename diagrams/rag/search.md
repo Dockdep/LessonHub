@@ -108,13 +108,13 @@ flowchart TD
   classDef good fill:#e8f5e9,color:#1a1a1a
   classDef bad fill:#ffe0e0,color:#1a1a1a
 
-  q1[Just lesson.name<br/>"Lesson 5"]:::bad
-  q2[Just lesson.topic<br/>"Pipes"]:::bad
-  q3[Combined<br/>"Pipes Lesson 5: Decorators in Angular"]:::good
+  q1["Just lesson.name<br/>'Lesson 5'"]:::bad
+  q2["Just lesson.topic<br/>'Pipes'"]:::bad
+  q3["Combined<br/>'Pipes Lesson 5: Decorators in Angular'"]:::good
 
-  q1 --> r1[Vague — embeds toward generic "lesson 5" content]
-  q2 --> r2[Ambiguous — could match Python's `pipes` module if doc has both]
-  q3 --> r3[Specific — embeds toward the topic in context]
+  q1 --> r1["Vague — embeds toward generic 'lesson 5' content"]
+  q2 --> r2["Ambiguous — could match Python's pipes module if doc has both"]
+  q3 --> r3["Specific — embeds toward the topic in context"]
 ```
 
 The combination biases the query vector toward chunks that match the lesson's *specific* angle. Chunks about generic "pipes" rank lower than chunks about "Angular pipes / decorators" when the query has both.

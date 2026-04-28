@@ -24,14 +24,14 @@ flowchart LR
   classDef tm fill:#fff3e0,color:#1a1a1a
   classDef agent fill:#fce4ec,color:#1a1a1a
 
-  call[create_X_agent<br/>llm, agent_type]
+  factory[create_X_agent<br/>llm, agent_type]
   util[_create_agent_from_template]:::tm
   resolve[_resolve_template<br/>agent_role + agent_type]:::tm
   tm[TemplateManager.render]:::tm
   yaml[yaml.safe_load<br/>role + goal + backstory]:::tm
   agent[crewai.Agent<br/>role, goal, backstory + suffix]:::agent
 
-  call --> util
+  factory --> util
   util --> resolve
   resolve --> tm
   tm --> yaml

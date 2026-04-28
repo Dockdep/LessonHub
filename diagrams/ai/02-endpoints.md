@@ -313,8 +313,8 @@ flowchart LR
   e_err[other Exception]:::bad
 
   req --> ok
-  req --> v_err --> r400[400 { detail }]
-  req --> e_err --> r500[500 { detail: "An unexpected technical error occurred." }]
+  req --> v_err --> r400["400 { detail }"]
+  req --> e_err --> r500["500 { detail: 'An unexpected technical error occurred.' }"]
 ```
 
 The crews swallow most errors internally (e.g. quality-check failures return a passing result so generated content isn't lost), so the broad `Exception` handler is rarely hit in practice.

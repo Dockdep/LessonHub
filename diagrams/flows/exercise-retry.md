@@ -44,7 +44,7 @@ sequenceDiagram
     alt passed or last
       Crew-->>Py: LessonExerciseResponse
     else
-      Note over Crew: append shortcomings to spec.comment; retry
+      Note over Crew: append shortcomings to spec.comment, retry
     end
   end
 
@@ -86,7 +86,7 @@ flowchart LR
   classDef bx fill:#fff3e0,color:#1a1a1a
 
   prev[Previous ExerciseAnswer]:::bx
-  rev[ReviewText:<br/>"You missed the conjugation in past tense.<br/>Specifically the irregular form of 'ir'..."]:::bx
+  rev["ReviewText:<br/>'You missed the conjugation in past tense.<br/>Specifically the irregular form of ir...'"]:::bx
   retry[Retry exercise template]:::bx
 
   prev --> rev --> retry
@@ -110,7 +110,7 @@ flowchart LR
   retry --> r_doc[RAG doc context]:::same
 
   init --> i_template[Template: review_content empty]:::diff
-  retry --> r_template[Template: REMEDIAL block injected<br/>+ explicit "do not repeat" rule]:::diff
+  retry --> r_template["Template: REMEDIAL block injected<br/>+ explicit 'do not repeat' rule"]:::diff
 
   init --> i_save["Save Exercise<br/>no link to prior"]:::diff
   retry --> r_save["Save Exercise<br/>also no DB link to prior"]:::diff

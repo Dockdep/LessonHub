@@ -10,7 +10,7 @@ public sealed class LessonRepository : RepositoryBase, ILessonRepository
     public LessonRepository(LessonsHubDbContext db) : base(db) { }
 
     public Task<Lesson?> GetByIdAsync(int id, CancellationToken ct = default) =>
-        _db.Lessons.FirstOrDefaultAsync(l => l.Id == id, ct);
+        _db.Lessons.AsNoTracking().FirstOrDefaultAsync(l => l.Id == id, ct);
 
     public Task<Lesson?> GetWithPlanAsync(int id, CancellationToken ct = default) =>
         _db.Lessons
@@ -40,7 +40,7 @@ public sealed class LessonRepository : RepositoryBase, ILessonRepository
     public async Task<(Lesson? previous, Lesson? next)> GetAdjacentAsync(int? planId, int lessonNumber, CancellationToken ct = default)
     {
         if (planId == null) return (null, null);
-        var siblings = _db.Lessons.Where(l => l.LessonPlanId == planId);
+        var siblings = _db.Lessons.AsNoTracking().Where(l => l.LessonPlanId == planId);
 
         var prev = await siblings
             .Where(l => l.LessonNumber < lessonNumber)
