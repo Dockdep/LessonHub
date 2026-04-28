@@ -43,11 +43,11 @@ Standard `classDef` blocks every architecture diagram should pull from:
 
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data shape:cyl,fill:#f3e5f5
-  classDef service fill:#e8f5e9
-  classDef agent fill:#fce4ec
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data shape:cyl,fill:#f3e5f5,color:#1a1a1a
+  classDef service fill:#e8f5e9,color:#1a1a1a
+  classDef agent fill:#fce4ec,color:#1a1a1a
 
   ext[External Service]:::external
   app[Internal Service]:::internal

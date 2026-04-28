@@ -136,9 +136,9 @@ classDiagram
 
 ```mermaid
 flowchart LR
-  classDef svc fill:#e8f5e9
-  classDef repo fill:#f3e5f5
-  classDef ext fill:#fff3e0
+  classDef svc fill:#e8f5e9,color:#1a1a1a
+  classDef repo fill:#f3e5f5,color:#1a1a1a
+  classDef ext fill:#fff3e0,color:#1a1a1a
 
   as[AuthService]:::svc
   ups[UserProfileService]:::svc

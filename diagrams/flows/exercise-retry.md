@@ -83,7 +83,7 @@ The "do not repeat" instruction is the key — without it, LLMs sometimes regene
 
 ```mermaid
 flowchart LR
-  classDef bx fill:#fff3e0
+  classDef bx fill:#fff3e0,color:#1a1a1a
 
   prev[Previous ExerciseAnswer]:::bx
   rev[ReviewText:<br/>"You missed the conjugation in past tense.<br/>Specifically the irregular form of 'ir'..."]:::bx
@@ -98,8 +98,8 @@ The `review` is the AI's prior critique — a markdown explanation of what the u
 
 ```mermaid
 flowchart LR
-  classDef same fill:#e8f5e9
-  classDef diff fill:#ffe0e0
+  classDef same fill:#e8f5e9,color:#1a1a1a
+  classDef diff fill:#ffe0e0,color:#1a1a1a
 
   init[Initial generate]:::same
   retry[Retry]:::same

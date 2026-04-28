@@ -8,13 +8,13 @@ A FastAPI process that exposes 8 HTTP endpoints. Each endpoint adapts the HTTP r
 
 ```mermaid
 flowchart TD
-  classDef ext stroke-dasharray: 5 5,fill:#fff8e7
-  classDef route fill:#e3f2fd
-  classDef svc fill:#e8f5e9
-  classDef crew fill:#bbdefb
-  classDef agent fill:#fce4ec
-  classDef tool fill:#fff3e0
-  classDef data fill:#f3e5f5
+  classDef ext stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef route fill:#e3f2fd,color:#1a1a1a
+  classDef svc fill:#e8f5e9,color:#1a1a1a
+  classDef crew fill:#bbdefb,color:#1a1a1a
+  classDef agent fill:#fce4ec,color:#1a1a1a
+  classDef tool fill:#fff3e0,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
 
   client[.NET API client]:::ext
 

@@ -88,8 +88,8 @@ Cost: one extra cheap LLM call per generation (`quality_llm`, ~$0.0001 per call)
 
 ```mermaid
 flowchart LR
-  classDef agent fill:#fce4ec
-  classDef tool fill:#fff3e0
+  classDef agent fill:#fce4ec,color:#1a1a1a
+  classDef tool fill:#fff3e0,color:#1a1a1a
 
   fa[framework_analyzer]:::agent --> queries[list~str~]
   queries --> ds[search_for_queries]:::tool

@@ -8,9 +8,9 @@ Angular 21 with full SSR (Node-rendered first paint, then browser hydration). St
 
 ```mermaid
 flowchart TD
-  classDef ext stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef svc fill:#e8f5e9
+  classDef ext stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef svc fill:#e8f5e9,color:#1a1a1a
 
   browser([Browser]):::ext
   ssr[Express/Node SSR<br/>server.ts]:::internal
@@ -25,7 +25,7 @@ flowchart TD
     guards[authGuard]:::internal
   end
 
-  api[/api/* on .NET API]:::ext
+  api["/api/* on .NET API"]:::ext
 
   browser --> ssr --> app
   app --> routes --> pages
@@ -92,9 +92,9 @@ Lifecycle: `ngOnInit` for initial data load (services). State held in `signal()`
 
 ```mermaid
 flowchart LR
-  classDef sig fill:#bbdefb
-  classDef cmp fill:#e3f2fd
-  classDef svc fill:#e8f5e9
+  classDef sig fill:#bbdefb,color:#1a1a1a
+  classDef cmp fill:#e3f2fd,color:#1a1a1a
+  classDef svc fill:#e8f5e9,color:#1a1a1a
 
   store[LessonDataStore]:::svc
   s_plans[plans signal]:::sig
@@ -132,9 +132,9 @@ The lesson markdown content is rendered by `ngx-markdown` (`<markdown [data]="le
 
 ```mermaid
 flowchart LR
-  classDef server fill:#fff3e0
-  classDef both fill:#bbdefb
-  classDef browser fill:#e8f5e9
+  classDef server fill:#fff3e0,color:#1a1a1a
+  classDef both fill:#bbdefb,color:#1a1a1a
+  classDef browser fill:#e8f5e9,color:#1a1a1a
 
   url[Browser request URL]:::browser
   caddy[Caddy]

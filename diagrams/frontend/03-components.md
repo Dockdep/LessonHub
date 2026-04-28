@@ -8,9 +8,9 @@
 
 ```mermaid
 flowchart LR
-  classDef page fill:#e3f2fd
-  classDef dialog fill:#fce4ec
-  classDef store fill:#e8f5e9
+  classDef page fill:#e3f2fd,color:#1a1a1a
+  classDef dialog fill:#fce4ec,color:#1a1a1a
+  classDef store fill:#e8f5e9,color:#1a1a1a
 
   store[LessonDataStore signals]:::store
 

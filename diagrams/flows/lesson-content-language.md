@@ -71,8 +71,8 @@ The "stay in target language" rule is enforced by the `{% if use_native_language
 
 ```mermaid
 flowchart TB
-  classDef nat fill:#e8f5e9
-  classDef imm fill:#fff3e0
+  classDef nat fill:#e8f5e9,color:#1a1a1a
+  classDef imm fill:#fff3e0,color:#1a1a1a
 
   subgraph nat[useNativeLanguage = true]
     direction TB

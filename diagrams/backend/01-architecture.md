@@ -8,8 +8,8 @@ The .NET 8 solution is split into four projects following Clean Architecture con
 
 ```mermaid
 flowchart TD
-  classDef proj fill:#e3f2fd
-  classDef test fill:#fce4ec
+  classDef proj fill:#e3f2fd,color:#1a1a1a
+  classDef test fill:#fce4ec,color:#1a1a1a
 
   api[LessonsHub<br/>ASP.NET Core API host]:::proj
   app[LessonsHub.Application<br/>Service facades + DTOs + abstractions]:::proj
@@ -45,8 +45,8 @@ Composition happens in [Program.cs](../../LessonsHub/Program.cs) via three exten
 
 ```mermaid
 flowchart LR
-  classDef boot fill:#fff3e0
-  classDef ext fill:#e8f5e9
+  classDef boot fill:#fff3e0,color:#1a1a1a
+  classDef ext fill:#e8f5e9,color:#1a1a1a
 
   prog[Program.cs]:::boot
 
@@ -133,8 +133,8 @@ The `db.Database.Migrate()` retry loop handles the case where Cloud SQL is brief
 
 ```mermaid
 flowchart LR
-  classDef ext stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
+  classDef ext stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
 
   google((Google OAuth)):::ext
   ui[Angular UI]:::internal

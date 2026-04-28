@@ -6,9 +6,9 @@ Cross-cutting helpers under [lessons-ai-api/tools/](../../lessons-ai-api/tools/)
 
 ```mermaid
 flowchart LR
-  classDef tool fill:#fff3e0
-  classDef ext stroke-dasharray: 5 5,fill:#fff8e7
-  classDef data fill:#f3e5f5
+  classDef tool fill:#fff3e0,color:#1a1a1a
+  classDef ext stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
 
   ds[documentation_search.py]:::tool
   rc[rag_chunker.py]:::tool
@@ -45,9 +45,9 @@ Web search + page fetch for grounding Technical lessons. The framework-analyzer 
 
 ```mermaid
 flowchart LR
-  classDef in fill:#e3f2fd
-  classDef step fill:#fff3e0
-  classDef out fill:#e8f5e9
+  classDef in fill:#e3f2fd,color:#1a1a1a
+  classDef step fill:#fff3e0,color:#1a1a1a
+  classDef out fill:#e8f5e9,color:#1a1a1a
 
   in_q[queries: list~str~]:::in
   bypass[bypass_cache flag]:::in

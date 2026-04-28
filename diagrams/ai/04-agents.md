@@ -21,8 +21,8 @@ The split between template-based and inline isn't accidental: agents whose voice
 
 ```mermaid
 flowchart LR
-  classDef tm fill:#fff3e0
-  classDef agent fill:#fce4ec
+  classDef tm fill:#fff3e0,color:#1a1a1a
+  classDef agent fill:#fce4ec,color:#1a1a1a
 
   call[create_X_agent<br/>llm, agent_type]
   util[_create_agent_from_template]:::tm

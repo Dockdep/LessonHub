@@ -116,10 +116,10 @@ For each output doc, these are the input files an agent must read first:
 ````
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data fill:#f3e5f5
-  classDef service fill:#e8f5e9
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
+  classDef service fill:#e8f5e9,color:#1a1a1a
 
   user([User Browser]):::external
   ui[lessonshub-ui<br/>Angular SSR]:::internal

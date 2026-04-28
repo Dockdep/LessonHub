@@ -170,8 +170,8 @@ Both AI HTTP clients chain `.AddStandardResilienceHandler(...)` after `.AddHttpM
 
 ```mermaid
 flowchart LR
-  classDef step fill:#fff3e0
-  classDef ext stroke-dasharray: 5 5,fill:#fff8e7
+  classDef step fill:#fff3e0,color:#1a1a1a
+  classDef ext stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
 
   caller[LessonsAiApiClient<br/>or RagApiClient]:::step
   res[StandardResilienceHandler<br/>retry + circuit breaker + per-attempt timeout]:::step

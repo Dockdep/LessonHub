@@ -74,8 +74,8 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  classDef u fill:#fce4ec
-  classDef l fill:#e3f2fd
+  classDef u fill:#fce4ec,color:#1a1a1a
+  classDef l fill:#e3f2fd,color:#1a1a1a
 
   ow[Owner User]:::u
   bo[Borrower User]:::u

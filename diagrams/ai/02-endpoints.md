@@ -304,8 +304,8 @@ classDiagram
 
 ```mermaid
 flowchart LR
-  classDef ok fill:#e8f5e9
-  classDef bad fill:#ffe0e0
+  classDef ok fill:#e8f5e9,color:#1a1a1a
+  classDef bad fill:#ffe0e0,color:#1a1a1a
 
   req[HTTP request]
   ok[200 with response_model]:::ok

@@ -25,8 +25,8 @@ The wildcard `**` falls through (no 404 component currently — Angular logs a w
 
 ```mermaid
 flowchart LR
-  classDef page fill:#e3f2fd
-  classDef public fill:#c8e6c9
+  classDef page fill:#e3f2fd,color:#1a1a1a
+  classDef public fill:#c8e6c9,color:#1a1a1a
 
   login[/login/]:::public
   today[/today/]:::page

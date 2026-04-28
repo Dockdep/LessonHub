@@ -114,7 +114,7 @@ The `_document_context.jinja2` partial is included — but renders empty when `d
 
 ```mermaid
 flowchart LR
-  classDef l fill:#e3f2fd
+  classDef l fill:#e3f2fd,color:#1a1a1a
 
   prev[Lesson 4<br/>Lists & Tuples]:::l
   cur[Lesson 5<br/>Dictionaries]:::l

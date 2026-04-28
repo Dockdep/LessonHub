@@ -91,7 +91,7 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-  classDef step fill:#fff3e0
+  classDef step fill:#fff3e0,color:#1a1a1a
 
   src[source_text]
   md{is_markdown<br/>and has headings?}:::step

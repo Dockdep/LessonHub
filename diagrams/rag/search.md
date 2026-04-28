@@ -105,8 +105,8 @@ In practice, embeddings of related text from the same document score around 0.5â
 
 ```mermaid
 flowchart TD
-  classDef good fill:#e8f5e9
-  classDef bad fill:#ffe0e0
+  classDef good fill:#e8f5e9,color:#1a1a1a
+  classDef bad fill:#ffe0e0,color:#1a1a1a
 
   q1[Just lesson.name<br/>"Lesson 5"]:::bad
   q2[Just lesson.topic<br/>"Pipes"]:::bad
