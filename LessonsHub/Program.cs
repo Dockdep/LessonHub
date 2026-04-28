@@ -3,6 +3,7 @@ using LessonsHub.Application.Interfaces;
 using LessonsHub.Extensions;
 using LessonsHub.Infrastructure.Configuration;
 using LessonsHub.Infrastructure.Data;
+using LessonsHub.Infrastructure.Realtime;
 using LessonsHub.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,7 @@ builder.Services.AddControllers()
 builder.Services.AddCurrentUser();
 builder.Services.AddRepositories();
 builder.Services.AddApplicationServices();
+builder.Services.AddJobInfrastructure();
 
 // Add CORS
 //
@@ -49,7 +51,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngular",
         policy => policy.WithOrigins(corsOrigins)
                         .AllowAnyHeader()
-                        .AllowAnyMethod());
+                        .AllowAnyMethod()
+                        // Required by SignalR — the JS client opens a credentialed
+                        // negotiate request before upgrading to WebSocket.
+                        .AllowCredentials());
 });
 
 // Configure LessonsAiApi settings
@@ -82,11 +87,14 @@ void ConfigureAiResilience(HttpStandardResilienceOptions opts)
     opts.Retry.UseJitter = true;
     opts.Retry.BackoffType = DelayBackoffType.Exponential;
 
-    // Open the circuit if half of recent calls failed in a 30s window; stay
-    // open for 30s before allowing a probe.
+    // Open the circuit if half of recent calls failed within the sampling
+    // window, then stay open for 30s before allowing a probe.
+    // Polly requires SamplingDuration >= 2 * AttemptTimeout so the window
+    // can observe at least two attempts; we use 5 min (covers ~2 worst-case
+    // attempts at 2 min each plus headroom).
     opts.CircuitBreaker.MinimumThroughput = 5;
     opts.CircuitBreaker.FailureRatio = 0.5;
-    opts.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    opts.CircuitBreaker.SamplingDuration = TimeSpan.FromMinutes(5);
     opts.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(30);
 }
 
@@ -161,6 +169,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
             ClockSkew = TimeSpan.Zero
+        };
+
+        // SignalR's JS client can't set headers on the WebSocket handshake,
+        // so it sends the JWT as ?access_token=... query param. Forward that
+        // to the bearer pipeline only for /hubs/* paths to avoid leaking the
+        // accept-token-in-querystring behavior to other endpoints.
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                var path = ctx.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(token) && path.StartsWithSegments("/hubs"))
+                    ctx.Token = token;
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -258,5 +282,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<GenerationHub>("/hubs/generation");
 
 app.Run();

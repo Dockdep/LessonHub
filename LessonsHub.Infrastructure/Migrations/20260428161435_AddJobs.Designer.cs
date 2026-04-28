@@ -3,6 +3,7 @@ using System;
 using LessonsHub.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LessonsHub.Infrastructure.Migrations
 {
     [DbContext(typeof(LessonsHubDbContext))]
-    partial class LessonsHubDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260428161435_AddJobs")]
+    partial class AddJobs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

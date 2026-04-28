@@ -189,7 +189,7 @@ Resilience runs *outside* `IamAuthHandler`, so a retry re-mints a fresh ID token
 | Policy | Setting | Why |
 |---|---|---|
 | Retry | 1 attempt, 2s base, exponential backoff w/ jitter | Cover network blips + cold start; conservative because the Python side already has its own internal quality-retry loop (3 attempts) — stacking amplifies tail latency + Gemini cost. |
-| Circuit breaker | open after 50% failures over 30s window, 30s break | Stop hammering a broken AI service while users keep clicking "Generate". |
+| Circuit breaker | open after 50% failures over 5-min window, 30s break | Stop hammering a broken AI service while users keep clicking "Generate". Polly requires the sampling window be ≥ 2× per-attempt timeout, so 5 min covers two worst-case 2-min attempts plus headroom. |
 | Per-attempt timeout | 2 minutes | Inner cap. Without this a hung request burns the whole `HttpClient.Timeout` and leaves no budget for retry. |
 | Total request timeout | `LessonsAiApiSettings.TimeoutMinutes` | Outer cap, drives the user-facing 504. Same value as `client.Timeout`. |
 

@@ -26,6 +26,7 @@ public class LessonsHubDbContext : DbContext
     public DbSet<AiRequestLog> AiRequestLogs { get; set; }
     public DbSet<LessonPlanShare> LessonPlanShares { get; set; }
     public DbSet<Document> Documents { get; set; }
+    public DbSet<Job> Jobs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -262,6 +263,34 @@ public class LessonsHubDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+        });
+
+        // Job configuration
+        modelBuilder.Entity<Job>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Type).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Status).HasConversion<int>().IsRequired();
+            entity.Property(e => e.PayloadJson).IsRequired();
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(200);
+            entity.Property(e => e.RelatedEntityType).HasMaxLength(100);
+            entity.Property(e => e.Error).HasMaxLength(4000);
+            entity.Property(e => e.UserId).IsRequired();
+            entity.Property(e => e.CreatedAt).IsRequired();
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Hot path: "what jobs are still in flight for this user?"
+            entity.HasIndex(e => new { e.UserId, e.Status });
+
+            // Idempotency: same (user, type, key) → same job. Filtered so NULL
+            // keys (no client opt-in) don't collide.
+            entity.HasIndex(e => new { e.UserId, e.Type, e.IdempotencyKey })
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
         });
 
         // AiRequestLog configuration
