@@ -61,8 +61,11 @@ public static class DependencyInjection
         services.AddScoped<IJobExecutorRegistry, JobExecutorRegistry>();
         services.AddHostedService<JobBackgroundService>();
 
-        // TEMP — Phase-0 sanity test executor. Remove in Phase 2.
+        // TEMP — Phase-0 sanity test executor. Remove once all real executors are landed.
         services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.EchoTestExecutor>();
+
+        // Real executors land here as Phase 3 progresses.
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonPlanGenerateExecutor>();
 
         return services;
     }

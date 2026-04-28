@@ -153,10 +153,20 @@ public sealed class LessonPlanService : ILessonPlanService
         return ServiceResult<LessonPlanDetailDto>.Ok(ToDetailDto(updated!, userId));
     }
 
+    public Task<ServiceResult> ValidateGenerateAsync(LessonPlanRequestDto request, CancellationToken ct = default)
+    {
+        if (request is null)
+            return Task.FromResult(ServiceResult.BadRequest("Request body is required."));
+        if (string.IsNullOrWhiteSpace(request.PlanName) || string.IsNullOrWhiteSpace(request.Topic))
+            return Task.FromResult(ServiceResult.BadRequest("Invalid input. Please provide plan name and topic."));
+        return Task.FromResult(ServiceResult.Ok());
+    }
+
     public async Task<ServiceResult<LessonPlanResponseDto>> GenerateAsync(LessonPlanRequestDto request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.PlanName) || string.IsNullOrWhiteSpace(request.Topic))
-            return ServiceResult<LessonPlanResponseDto>.BadRequest("Invalid input. Please provide plan name and topic.");
+        var validation = await ValidateGenerateAsync(request, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<LessonPlanResponseDto>(default, validation.Error, validation.Message);
 
         try
         {

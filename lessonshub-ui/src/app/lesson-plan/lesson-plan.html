@@ -106,6 +106,8 @@
       <button mat-button (click)="resetForm()">Reset</button>
       <button mat-raised-button color="primary" class="generate-btn" (click)="generateLessonPlan()" [disabled]="isLoading()">
         <mat-spinner diameter="20" *ngIf="isLoading()" class="spinner-white"></mat-spinner>
+        <span *ngIf="isLoading() && generationPhase() === 'queued'">Queued…</span>
+        <span *ngIf="isLoading() && generationPhase() === 'generating'">Generating…</span>
         <span *ngIf="!isLoading()">Generate Plan</span>
         <mat-icon *ngIf="!isLoading()" class="btn-icon-right">auto_awesome</mat-icon>
       </button>

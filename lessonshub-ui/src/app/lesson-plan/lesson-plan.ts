@@ -17,6 +17,7 @@ import { LessonDataStore } from '../services/lesson-data.store';
 import { DocumentService } from '../services/document.service';
 import { Document as Doc } from '../models/document.model';
 import { LessonPlanRequest, LessonPlanResponse, LESSON_TYPES } from '../models/lesson-plan.model';
+import { JobStatus } from '../models/job.model';
 
 @Component({
   selector: 'app-lesson-plan',
@@ -57,6 +58,11 @@ export class LessonPlan implements OnInit {
   error = signal('');
   saveSuccess = signal(false);
   generatedPlan = signal<LessonPlanResponse | null>(null);
+
+  // Phased status drives the spinner copy: 'queued' between POST 202 and the
+  // first JobUpdated event, 'generating' once Status=Running comes through.
+  // Renders nothing when isLoading is false.
+  generationPhase = signal<'queued' | 'generating' | ''>('');
 
   // Currently-attached document. Can come from either the /documents page
   // (?documentId=N query param) or the in-form picker. Optional and
@@ -133,6 +139,7 @@ export class LessonPlan implements OnInit {
     this.isLoading.set(true);
     this.error.set('');
     this.generatedPlan.set(null);
+    this.generationPhase.set('queued');
 
     const v = this.form.value;
     const sourceDoc = this.sourceDocument();
@@ -155,15 +162,26 @@ export class LessonPlan implements OnInit {
     };
 
     this.lessonPlanService.generateLessonPlan(request).subscribe({
-      next: (response) => {
-        this.generatedPlan.set(response);
-        this.planNameEdit.setValue(response.planName);
-        this.isLoading.set(false);
+      next: (event) => {
+        if (event.status === JobStatus.Running) {
+          this.generationPhase.set('generating');
+          return;
+        }
+        if (event.status === JobStatus.Completed) {
+          const plan = this.lessonPlanService.parsePlanResult(event);
+          if (plan) {
+            this.generatedPlan.set(plan);
+            this.planNameEdit.setValue(plan.planName);
+          }
+          this.isLoading.set(false);
+          this.generationPhase.set('');
+        }
       },
-      error: (error) => {
-        console.error('Error:', error);
-        this.error.set('Error generating lesson plan: ' + (error.error?.message || error.message));
+      error: (err) => {
+        console.error('Error:', err);
+        this.error.set('Error generating lesson plan: ' + (err.error?.message || err.message));
         this.isLoading.set(false);
+        this.generationPhase.set('');
       }
     });
   }

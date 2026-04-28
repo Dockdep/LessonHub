@@ -22,7 +22,7 @@ public static class TestStack
         new(BuildLessonDayService(db, actingAs));
 
     public static LessonPlanController LessonPlanController(TestDb db, int actingAs, ILessonsAiApiClient ai) =>
-        new(BuildLessonPlanService(db, actingAs, ai));
+        new(BuildLessonPlanService(db, actingAs, ai), new TestJobService());
 
     public static LessonController LessonController(TestDb db, int actingAs, ILessonsAiApiClient ai) =>
         new(
