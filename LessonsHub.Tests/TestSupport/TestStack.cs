@@ -27,7 +27,14 @@ public static class TestStack
     public static LessonController LessonController(TestDb db, int actingAs, ILessonsAiApiClient ai) =>
         new(
             BuildLessonService(db, actingAs, ai),
-            BuildExerciseService(db, actingAs, ai));
+            BuildExerciseService(db, actingAs, ai),
+            new TestJobService());
+
+    public static LessonsHub.Application.Services.ExerciseService BuildExerciseServiceForTests(TestDb db, int actingAs, ILessonsAiApiClient ai) =>
+        BuildExerciseService(db, actingAs, ai);
+
+    public static LessonsHub.Application.Services.LessonService BuildLessonServiceForTests(TestDb db, int actingAs, ILessonsAiApiClient ai) =>
+        BuildLessonService(db, actingAs, ai);
 
     private static LessonPlanShareService BuildShareService(TestDb db, int actingAs) =>
         new(

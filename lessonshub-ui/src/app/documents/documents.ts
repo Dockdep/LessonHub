@@ -77,15 +77,12 @@ export class Documents implements OnInit {
     this.docs.upload(file).subscribe({
       next: (event) => {
         this.uploading.set({ name: file.name, progress: event.progress });
-        if (event.document) {
-          // Final event — server returned the saved + ingested document.
+        if (event.document && event.jobId) {
+          // File is saved; ingest is now running in the background.
           this.uploading.set(null);
-          if (event.document.ingestionStatus === 'Failed') {
-            this.notify.error(`Upload saved but ingestion failed: ${event.document.ingestionError ?? 'unknown error'}`);
-          } else {
-            this.notify.success(`"${event.document.name}" ingested (${event.document.chunkCount} chunks).`);
-          }
+          this.notify.success(`"${event.document.name}" uploaded — ingesting…`);
           this.refresh();
+          this.subscribeToIngest(event.jobId, event.document.name);
         }
       },
       error: (err) => {
@@ -94,6 +91,23 @@ export class Documents implements OnInit {
         const detail = err.error?.message ?? err.message ?? 'Upload failed.';
         this.error.set(detail);
         this.notify.error(detail);
+      },
+    });
+  }
+
+  private subscribeToIngest(jobId: string, fileName: string): void {
+    this.docs.subscribeToIngest(jobId).subscribe({
+      next: (event) => {
+        if (event.status === 2 /* Completed */) {
+          this.notify.success(`"${fileName}" ingestion complete.`);
+          this.refresh();
+        } else if (event.status === 3 /* Failed */) {
+          this.notify.error(`Ingestion failed for "${fileName}": ${event.error ?? 'unknown error'}`);
+          this.refresh();
+        }
+      },
+      error: (err) => {
+        console.error('Ingest subscription failed', err);
       },
     });
   }

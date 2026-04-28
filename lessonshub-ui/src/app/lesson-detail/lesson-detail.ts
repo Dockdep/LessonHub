@@ -16,6 +16,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MarkdownModule } from 'ngx-markdown';
 import { LessonService } from '../services/lesson.service';
 import { Lesson, Exercise, UpdateLessonInfo } from '../models/lesson.model';
+import { JobStatus } from '../models/job.model';
 import { GenerateExerciseDialog, GenerateExerciseDialogResult } from '../generate-exercise-dialog/generate-exercise-dialog';
 import { ConfirmDialog } from '../confirm-dialog/confirm-dialog';
 import { RegenerateLessonDialog, RegenerateLessonDialogResult } from '../regenerate-lesson-dialog/regenerate-lesson-dialog';
@@ -117,6 +118,12 @@ export class LessonDetail implements OnInit {
             this.nextLessonId.set(res.nextLessonId);
           }
         });
+        // Lazy content generation: backend no longer auto-generates on read.
+        // If Content is empty, kick off the explicit job and stream the
+        // result via SignalR. The component shows the regenerating spinner.
+        if (this.isBrowser && !data.content?.trim()) {
+          this.triggerLazyContentGen(id);
+        }
       },
       error: (err) => {
         console.error('Error loading lesson', err);
@@ -149,11 +156,15 @@ export class LessonDetail implements OnInit {
 
     this.isGeneratingExercise.set(true);
     this.lessonService.generateExercise(lesson.id, params.difficulty, params.comment).subscribe({
-      next: (exercise) => {
-        lesson.exercises.push(exercise);
-        this.lesson.set({ ...lesson });
+      next: (event) => {
+        if (event.status !== JobStatus.Completed) return;
+        const exercise = this.lessonService.parseExerciseResult(event);
+        if (exercise) {
+          lesson.exercises.push(exercise);
+          this.lesson.set({ ...lesson });
+          this.openNewPanel();
+        }
         this.isGeneratingExercise.set(false);
-        this.openNewPanel();
       },
       error: (err) => {
         console.error('Error generating exercise', err);
@@ -169,11 +180,15 @@ export class LessonDetail implements OnInit {
 
     this.isGeneratingExercise.set(true);
     this.lessonService.retryExercise(lesson.id, params.difficulty, params.review, params.comment).subscribe({
-      next: (exercise) => {
-        lesson.exercises.push(exercise);
-        this.lesson.set({ ...lesson });
+      next: (event) => {
+        if (event.status !== JobStatus.Completed) return;
+        const exercise = this.lessonService.parseExerciseResult(event);
+        if (exercise) {
+          lesson.exercises.push(exercise);
+          this.lesson.set({ ...lesson });
+          this.openNewPanel();
+        }
         this.isGeneratingExercise.set(false);
-        this.openNewPanel();
       },
       error: (err) => {
         console.error('Error retrying exercise', err);
@@ -197,9 +212,13 @@ export class LessonDetail implements OnInit {
 
     this.submittingExerciseId.set(exercise.id);
     this.lessonService.submitExerciseAnswer(exercise.id, answer).subscribe({
-      next: (result) => {
-        exercise.answers.push(result);
-        ctrl.setValue('');
+      next: (event) => {
+        if (event.status !== JobStatus.Completed) return;
+        const reviewed = this.lessonService.parseAnswerResult(event);
+        if (reviewed) {
+          exercise.answers.push(reviewed);
+          ctrl.setValue('');
+        }
         this.submittingExerciseId.set(null);
       },
       error: (err) => {
@@ -290,14 +309,40 @@ export class LessonDetail implements OnInit {
     this.error.set('');
 
     this.lessonService.regenerateContent(lesson.id, bypassDocCache).subscribe({
-      next: (updated) => {
-        this.lesson.set(updated);
+      next: (event) => {
+        if (event.status !== JobStatus.Completed) return;
+        const updated = this.lessonService.parseLessonResult(event);
+        if (updated) {
+          this.lesson.set(updated);
+          this.notify.success('Lesson content regenerated!');
+        }
         this.isRegenerating.set(false);
-        this.notify.success('Lesson content regenerated!');
       },
       error: (err) => {
         console.error('Error regenerating content', err);
         this.notify.error('Failed to regenerate lesson.');
+        this.isRegenerating.set(false);
+      }
+    });
+  }
+
+  /**
+   * Lazy content gen kicked off when GetLesson returns empty Content.
+   * The component already shows the lesson skeleton; we just stream in
+   * the body when the executor finishes.
+   */
+  private triggerLazyContentGen(lessonId: number): void {
+    this.isRegenerating.set(true);
+    this.lessonService.generateContent(lessonId).subscribe({
+      next: (event) => {
+        if (event.status !== JobStatus.Completed) return;
+        const updated = this.lessonService.parseLessonResult(event);
+        if (updated) this.lesson.set(updated);
+        this.isRegenerating.set(false);
+      },
+      error: (err) => {
+        console.error('Error generating content', err);
+        this.error.set('Failed to generate lesson content: ' + (err.error?.message || err.message));
         this.isRegenerating.set(false);
       }
     });

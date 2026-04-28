@@ -96,22 +96,28 @@ public class LessonControllerTests
 
     // ---------- Generate / Retry: borrower allowed, exercise tagged with caller ----------
 
+    // Generate / Retry / Check now run inside JobBackgroundService via an
+    // executor that calls the service method. Controller-level assertions
+    // only verify the validate-then-enqueue path (4xx for invalid, 202 for
+    // valid). The AI-call + DB-write behavior is tested directly against
+    // the service.
+
     [Fact]
     public async Task GenerateExercise_borrower_can_generate_and_owns_the_exercise()
     {
         using var db = new TestDb();
         var plan = db.SeedPlan(sharedWith: new[] { db.Borrower.Id });
         var lesson = db.SeedLesson(plan.Id, content: "Has content");
-        var (controller, ai) = Build(db, db.Borrower.Id);
-
+        var ai = new Mock<ILessonsAiApiClient>();
         ai.Setup(x => x.GenerateLessonExerciseAsync(It.IsAny<AiLessonExerciseRequest>()))
             .ReturnsAsync(new AiLessonExerciseResponse { Exercise = "Generated text" });
 
-        var result = await controller.GenerateExercise(lesson.Id);
+        var service = TestStack.BuildExerciseServiceForTests(db, db.Borrower.Id, ai.Object);
+        var result = await service.GenerateAsync(lesson.Id, "medium", null);
 
-        var exercise = (ExerciseDto)((OkObjectResult)result).Value!;
-        Assert.Equal("Generated text", exercise.ExerciseText);
-        var persisted = await db.Context.Exercises.AsNoTracking().FirstAsync(e => e.Id == exercise.Id);
+        Assert.True(result.IsSuccess);
+        var persisted = await db.Context.Exercises.AsNoTracking().FirstAsync(e => e.Id == result.Value!.Id);
+        Assert.Equal("Generated text", persisted.ExerciseText);
         Assert.Equal(db.Borrower.Id, persisted.UserId);
     }
 
@@ -123,7 +129,7 @@ public class LessonControllerTests
         var lesson = db.SeedLesson(plan.Id, content: "Has content");
         var (controller, _) = Build(db, db.Stranger.Id);
 
-        var result = await controller.GenerateExercise(lesson.Id);
+        var result = await controller.GenerateExercise(lesson.Id, "medium", null, null, default);
 
         Assert.IsType<NotFoundResult>(result);
     }
@@ -134,15 +140,15 @@ public class LessonControllerTests
         using var db = new TestDb();
         var plan = db.SeedPlan(sharedWith: new[] { db.Borrower.Id });
         var lesson = db.SeedLesson(plan.Id, content: "Has content");
-        var (controller, ai) = Build(db, db.Borrower.Id);
-
+        var ai = new Mock<ILessonsAiApiClient>();
         ai.Setup(x => x.RetryLessonExerciseAsync(It.IsAny<AiExerciseRetryRequest>()))
             .ReturnsAsync(new AiLessonExerciseResponse { Exercise = "Retry text" });
 
-        var result = await controller.RetryExercise(lesson.Id, review: "needs work");
+        var service = TestStack.BuildExerciseServiceForTests(db, db.Borrower.Id, ai.Object);
+        var result = await service.RetryAsync(lesson.Id, "medium", null, "needs work");
 
-        var exercise = (ExerciseDto)((OkObjectResult)result).Value!;
-        var persisted = await db.Context.Exercises.AsNoTracking().FirstAsync(e => e.Id == exercise.Id);
+        Assert.True(result.IsSuccess);
+        var persisted = await db.Context.Exercises.AsNoTracking().FirstAsync(e => e.Id == result.Value!.Id);
         Assert.Equal(db.Borrower.Id, persisted.UserId);
     }
 
@@ -158,7 +164,7 @@ public class LessonControllerTests
 
         var (controller, ai) = Build(db, db.Borrower.Id);
 
-        var result = await controller.CheckExerciseReview(ownerExercise.Id, "my answer");
+        var result = await controller.CheckExerciseReview(ownerExercise.Id, "my answer", null, default);
 
         Assert.IsType<NotFoundResult>(result);
         ai.Verify(x => x.CheckExerciseReviewAsync(It.IsAny<AiExerciseReviewRequest>()), Times.Never);
@@ -172,15 +178,16 @@ public class LessonControllerTests
         var lesson = db.SeedLesson(plan.Id);
         var myExercise = db.SeedExercise(lesson.Id, db.Borrower.Id);
 
-        var (controller, ai) = Build(db, db.Borrower.Id);
+        var ai = new Mock<ILessonsAiApiClient>();
         ai.Setup(x => x.CheckExerciseReviewAsync(It.IsAny<AiExerciseReviewRequest>()))
             .ReturnsAsync(new AiExerciseReviewResponse { AccuracyLevel = 92, ExamReview = "Good" });
 
-        var result = await controller.CheckExerciseReview(myExercise.Id, "answer");
+        var service = TestStack.BuildExerciseServiceForTests(db, db.Borrower.Id, ai.Object);
+        var result = await service.CheckAnswerAsync(myExercise.Id, "answer");
 
-        var answer = (ExerciseAnswerDto)((OkObjectResult)result).Value!;
-        Assert.Equal(myExercise.Id, answer.ExerciseId);
-        Assert.Equal(92, answer.AccuracyLevel);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(myExercise.Id, result.Value!.ExerciseId);
+        Assert.Equal(92, result.Value.AccuracyLevel);
     }
 
     // ---------- Owner-only mutations ----------
