@@ -1,6 +1,10 @@
+using LessonsHub.Application.Abstractions;
 using LessonsHub.Application.Abstractions.Services;
+using LessonsHub.Application.Models.Jobs;
 using LessonsHub.Application.Models.Requests;
+using LessonsHub.Application.Models.Responses;
 using LessonsHub.Application.Services;
+using LessonsHub.Application.Services.Executors;
 using LessonsHub.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +17,12 @@ namespace LessonsHub.Controllers;
 public class DocumentsController : ControllerBase
 {
     private readonly IDocumentService _documents;
+    private readonly IJobService _jobs;
 
-    public DocumentsController(IDocumentService documents)
+    public DocumentsController(IDocumentService documents, IJobService jobs)
     {
         _documents = documents;
+        _jobs = jobs;
     }
 
     [HttpGet]
@@ -27,9 +33,18 @@ public class DocumentsController : ControllerBase
     public async Task<IActionResult> Get(int id) =>
         (await _documents.GetAsync(id)).ToActionResult();
 
+    /// <summary>
+    /// Synchronously persists the file to storage, then enqueues a
+    /// DocumentIngest job and returns the document with status="Pending"
+    /// plus the job id. The browser subscribes to the SignalR hub for
+    /// the ingest result.
+    /// </summary>
     [HttpPost("upload")]
     [RequestSizeLimit(DocumentService.MaxUploadBytes)]
-    public async Task<IActionResult> Upload(IFormFile file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(
+        IFormFile file,
+        [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
     {
         if (file == null)
             return BadRequest(new { message = "No file provided." });
@@ -41,7 +56,19 @@ public class DocumentsController : ControllerBase
             file.Length,
             stream);
 
-        return (await _documents.UploadAsync(input, cancellationToken)).ToActionResult();
+        var uploadResult = await _documents.UploadAsync(input, cancellationToken);
+        if (!uploadResult.IsSuccess) return uploadResult.ToActionResult();
+
+        var doc = uploadResult.Value!;
+        var jobId = await _jobs.EnqueueAsync(
+            JobType.DocumentIngest,
+            new DocumentIngestPayload(doc.Id),
+            idempotencyKey: idempotencyKey,
+            relatedEntityType: "Document",
+            relatedEntityId: doc.Id,
+            ct: cancellationToken);
+
+        return Accepted(new UploadAcceptedResponse(doc, jobId));
     }
 
     [HttpDelete("{id:int}")]
@@ -52,3 +79,10 @@ public class DocumentsController : ControllerBase
         return result.IsSuccess ? NoContent() : result.ToActionResult();
     }
 }
+
+/// <summary>
+/// Upload responds with both the freshly-stored Document (so the UI can show
+/// it in the list immediately) and the ingest jobId (so the UI can subscribe
+/// for status transitions).
+/// </summary>
+public sealed record UploadAcceptedResponse(DocumentDto Document, Guid JobId);

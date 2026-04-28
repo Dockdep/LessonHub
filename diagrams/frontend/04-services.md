@@ -1,8 +1,63 @@
 # Frontend — 04 Services
 
-8 HTTP-facing services + 1 in-memory state store ([LessonDataStore](../../lessonshub-ui/src/app/services/lesson-data.store.ts)).
+10 services + 1 in-memory state store ([LessonDataStore](../../lessonshub-ui/src/app/services/lesson-data.store.ts)). 8 are HTTP-facing, 1 ([RealtimeService](../../lessonshub-ui/src/app/services/realtime.service.ts)) owns the SignalR connection, and 1 ([JobsService](../../lessonshub-ui/src/app/services/jobs.service.ts)) is the central client for the `/api/jobs/*` surface — every async-generation endpoint goes through it.
 
 > **Source files**: [lessonshub-ui/src/app/services/](../../lessonshub-ui/src/app/services/).
+
+## SignalR job pipeline (`RealtimeService` + `JobsService`)
+
+All AI-generation calls are async. The browser POSTs, gets `202 + jobId`, subscribes to the hub, then renders progress + final result as `JobEvent`s arrive. `JobsService.postAndStream` collapses that whole sequence — POST + subscribe + filter on terminal status + throw on failure — into one call so each AI-facing service method stays at ~3 lines.
+
+```mermaid
+sequenceDiagram
+  participant Comp as Component
+  participant Svc as TS service<br/>(LessonPlanService etc.)
+  participant Jobs as JobsService
+  participant API as .NET API
+  participant RT as RealtimeService
+  participant Hub as GenerationHub
+
+  Comp->>Svc: generateLessonPlan(req)
+  Svc->>Jobs: postAndStream(url, req)
+  Jobs->>API: POST /generate<br/>X-Idempotency-Key: uuid
+  API-->>Jobs: 202 + { jobId }
+  Jobs->>Jobs: subscribeToExistingJob(jobId)
+  Jobs->>API: GET /api/jobs/{id} (race-guard poll)
+  API-->>Jobs: JobDto (Pending|Running)
+  Jobs->>RT: subscribe(jobId)
+  RT->>Hub: ensureConnection() (lazy)
+  Hub-->>RT: WS open + JobUpdated stream
+  loop until terminal
+    Hub-->>RT: JobUpdated (Status=Running)
+    RT-->>Jobs: JobEvent
+    Jobs-->>Svc: JobEvent
+    Svc-->>Comp: JobEvent (component shows phased status)
+  end
+  Hub-->>RT: JobUpdated (Status=Completed, result=JSON)
+  RT-->>Jobs: JobEvent
+  Jobs-->>Svc: JobEvent
+  Svc-->>Comp: parsed DTO via parsePlanResult / parseExerciseResult / parseLessonResult
+```
+
+Each AI-touching TS service (`LessonPlanService`, `LessonService`, `DocumentService`) returns `Observable<JobEvent>` from its generate-style methods. Components filter for `JobStatus.Completed`, parse `event.result` (JSON string) into the expected DTO via the service's `parse___Result` helper, and update their state. `JobStatus.Failed` causes the observable to error with the server's message. JWT is forwarded on the WS handshake via `accessTokenFactory: () => this.auth.getToken()`; the .NET side accepts `?access_token=…` only on `/hubs/*` paths.
+
+### `JobsService` API
+
+| Method | Purpose |
+| --- | --- |
+| `postAndStream<TBody>(url, body, opts?)` | The standard "fire-and-forget then stream" entry point. Auto-injects `X-Idempotency-Key`. Returns `Observable<JobEvent>` that emits per status transition, errors on `Failed`. |
+| `subscribeToExistingJob(jobId)` | Resume tracking by id. Polls `GET /api/jobs/{id}` first to handle the race where the executor finished between page load and the WS handshake (emits a synthetic `Completed`/`Failed` event in that case). |
+| `findInFlight(type, entityType?, entityId?)` | Single-job page-load probe. Returns the matching `JobDto` or `null`. |
+| `listInFlightForEntity(entityType, entityId)` | All jobs the user has on one entity. Detail pages call this on load to repaint every active banner with one query. |
+| `get(jobId)` | Polling fallback (used internally by `subscribeToExistingJob`). |
+
+### In-flight recovery (revisit-after-navigation)
+
+Jobs are decoupled from the UI lifecycle: the BG worker keeps running regardless of subscribers. So if the user navigates away mid-generation and comes back:
+
+- **Lesson plan generate** — `LessonPlan.ngOnInit` calls `findInFlight('LessonPlanGenerate')`. If found, banner re-attaches and stream resumes. If the job already **completed** while the user was away, the result is also persisted to `localStorage['lessonshub:pendingPlan']` (24h TTL) so the form repopulates and the user can still hit Save without re-paying for generation.
+- **Lesson detail** (content gen / regen / exercise gen / retry) — `LessonDetail.loadLesson` calls `listInFlightForEntity('Lesson', id)` (one query per page load) and dispatches each returned job to the matching banner via a `resumeJobByType` switch.
+- **Other endpoints** — exercise review and document ingest don't restore banners on revisit (low value; data still lands correctly, page reload shows new state).
 
 ## Service → endpoint map
 

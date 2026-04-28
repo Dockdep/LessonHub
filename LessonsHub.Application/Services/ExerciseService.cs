@@ -38,15 +38,25 @@ public sealed class ExerciseService : IExerciseService
         _logger = logger;
     }
 
-    public async Task<ServiceResult<ExerciseDto>> GenerateAsync(int lessonId, string difficulty, string? comment, CancellationToken ct = default)
+    public async Task<ServiceResult> ValidateGenerateAsync(int lessonId, string difficulty, string? comment, CancellationToken ct = default)
     {
         var userId = _currentUser.Id;
         var lesson = await _lessons.GetWithPlanAsync(lessonId, ct);
         if (lesson == null || !await _plans.HasReadAccessAsync(lesson.LessonPlanId, userId, ct))
-            return ServiceResult<ExerciseDto>.NotFound();
-
+            return ServiceResult.NotFound();
         if (string.IsNullOrWhiteSpace(lesson.Content))
-            return ServiceResult<ExerciseDto>.BadRequest("Lesson content must be generated first.");
+            return ServiceResult.BadRequest("Lesson content must be generated first.");
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<ExerciseDto>> GenerateAsync(int lessonId, string difficulty, string? comment, CancellationToken ct = default)
+    {
+        var validation = await ValidateGenerateAsync(lessonId, difficulty, comment, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<ExerciseDto>(default, validation.Error, validation.Message);
+
+        var userId = _currentUser.Id;
+        var lesson = (await _lessons.GetWithPlanAsync(lessonId, ct))!;
 
         try
         {
@@ -98,17 +108,27 @@ public sealed class ExerciseService : IExerciseService
         }
     }
 
-    public async Task<ServiceResult<ExerciseDto>> RetryAsync(int lessonId, string difficulty, string? comment, string review, CancellationToken ct = default)
+    public async Task<ServiceResult> ValidateRetryAsync(int lessonId, string difficulty, string? comment, string review, CancellationToken ct = default)
     {
         var userId = _currentUser.Id;
         var lesson = await _lessons.GetWithPlanAsync(lessonId, ct);
         if (lesson == null || !await _plans.HasReadAccessAsync(lesson.LessonPlanId, userId, ct))
-            return ServiceResult<ExerciseDto>.NotFound();
-
+            return ServiceResult.NotFound();
         if (string.IsNullOrWhiteSpace(lesson.Content))
-            return ServiceResult<ExerciseDto>.BadRequest("Lesson content must be generated first.");
+            return ServiceResult.BadRequest("Lesson content must be generated first.");
         if (string.IsNullOrWhiteSpace(review))
-            return ServiceResult<ExerciseDto>.BadRequest("Review text is required for retry.");
+            return ServiceResult.BadRequest("Review text is required for retry.");
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<ExerciseDto>> RetryAsync(int lessonId, string difficulty, string? comment, string review, CancellationToken ct = default)
+    {
+        var validation = await ValidateRetryAsync(lessonId, difficulty, comment, review, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<ExerciseDto>(default, validation.Error, validation.Message);
+
+        var userId = _currentUser.Id;
+        var lesson = (await _lessons.GetWithPlanAsync(lessonId, ct))!;
 
         try
         {
@@ -161,15 +181,26 @@ public sealed class ExerciseService : IExerciseService
         }
     }
 
-    public async Task<ServiceResult<ExerciseAnswerDto>> CheckAnswerAsync(int exerciseId, string? answer, CancellationToken ct = default)
+    public async Task<ServiceResult> ValidateCheckAnswerAsync(int exerciseId, string? answer, CancellationToken ct = default)
     {
         var userId = _currentUser.Id;
         var exercise = await _exercises.GetForUserWithLessonAsync(exerciseId, userId, ct);
-        // Exercise must belong to the caller (per-user answers).
-        if (exercise == null) return ServiceResult<ExerciseAnswerDto>.NotFound();
-
+        if (exercise == null) return ServiceResult.NotFound();
         if (string.IsNullOrWhiteSpace(answer))
-            return ServiceResult<ExerciseAnswerDto>.BadRequest("Answer cannot be empty.");
+            return ServiceResult.BadRequest("Answer cannot be empty.");
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<ExerciseAnswerDto>> CheckAnswerAsync(int exerciseId, string? answer, CancellationToken ct = default)
+    {
+        var validation = await ValidateCheckAnswerAsync(exerciseId, answer, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<ExerciseAnswerDto>(default, validation.Error, validation.Message);
+
+        // Validation above already rejected null/empty answer.
+        var nonNullAnswer = answer!;
+        var userId = _currentUser.Id;
+        var exercise = (await _exercises.GetForUserWithLessonAsync(exerciseId, userId, ct))!;
 
         try
         {
@@ -179,7 +210,7 @@ public sealed class ExerciseService : IExerciseService
                 LessonContent = exercise.Lesson.Content,
                 ExerciseContent = exercise.ExerciseText,
                 Difficulty = exercise.Difficulty,
-                Answer = answer,
+                Answer = nonNullAnswer,
                 Language = exercise.Lesson.LessonPlan?.NativeLanguage,
                 NativeLanguage = exercise.Lesson.LessonPlan?.NativeLanguage,
                 LanguageToLearn = exercise.Lesson.LessonPlan?.LanguageToLearn,
@@ -192,7 +223,7 @@ public sealed class ExerciseService : IExerciseService
 
             var answerEntity = new ExerciseAnswer
             {
-                UserResponse = answer,
+                UserResponse = nonNullAnswer,
                 SubmittedAt = DateTime.UtcNow,
                 AccuracyLevel = aiResponse.AccuracyLevel,
                 ReviewText = aiResponse.ExamReview,

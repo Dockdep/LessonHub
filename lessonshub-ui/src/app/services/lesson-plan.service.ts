@@ -1,18 +1,30 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { LessonPlanRequest, LessonPlanResponse } from '../models/lesson-plan.model';
+import { JobEvent, JobStatus } from '../models/job.model';
+import { JobsService } from './jobs.service';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class LessonPlanService {
   private apiUrl = '/api/lessonplan';
+  private jobs = inject(JobsService);
 
   constructor(private http: HttpClient) { }
 
-  generateLessonPlan(request: LessonPlanRequest): Observable<LessonPlanResponse> {
-    return this.http.post<LessonPlanResponse>(`${this.apiUrl}/generate`, request);
+  /**
+   * Generate a plan via the SignalR job pipeline. Stream emits one event per
+   * status transition; on Completed `event.result` holds the JSON-serialized
+   * LessonPlanResponse — use {@link parsePlanResult} to deserialize.
+   */
+  generateLessonPlan(request: LessonPlanRequest): Observable<JobEvent> {
+    return this.jobs.postAndStream(`${this.apiUrl}/generate`, request);
+  }
+
+  /** Extracts the LessonPlanResponse from a Completed event's `result`. */
+  parsePlanResult(event: JobEvent): LessonPlanResponse | null {
+    if (event.status !== JobStatus.Completed || !event.result) return null;
+    return JSON.parse(event.result) as LessonPlanResponse;
   }
 
   saveLessonPlan(

@@ -272,3 +272,95 @@
 
 .toast-close:hover { opacity: 1; }
 .toast-close mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+/* Notifications dropdown — set width on the outer panel so the inner
+   content doesn't render at its own (wider) intrinsic size and get clipped. */
+::ng-deep .mat-mdc-menu-panel.notifications-menu {
+  min-width: 320px !important;
+  max-width: 340px !important;
+  width: 340px !important;
+}
+
+::ng-deep .notifications-menu .mat-mdc-menu-content {
+  max-height: 480px;
+  padding: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Make sure the badge isn't clipped by overflow rules elsewhere on the icon button. */
+.notifications-trigger {
+  overflow: visible;
+}
+
+/* Tame the matBadge — Angular Material's default looks oversized on a
+   24px icon-button. Force compact dimensions + smaller font. */
+::ng-deep .notifications-trigger .mat-badge-content {
+  width: 16px !important;
+  height: 16px !important;
+  line-height: 16px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  top: 2px !important;
+  right: 2px !important;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+}
+
+.menu-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.menu-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.menu-item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.menu-item-row:last-child { border-bottom: none; }
+
+.menu-item-icon {
+  color: #16a34a;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+.menu-item-error .menu-item-icon { color: #dc2626; }
+
+.menu-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.menu-item-message {
+  font-size: 0.9rem;
+  color: #111827;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.menu-item-time {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}

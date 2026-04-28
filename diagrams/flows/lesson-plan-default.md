@@ -22,8 +22,14 @@ sequenceDiagram
   participant QC as run_quality_check
 
   User->>UI: fill form (lessonType=Default)
-  UI->>Net: POST /api/lessonplan/generate
-  Net->>LPS: GenerateAsync(req)
+  UI->>Net: POST /api/lessonplan/generate<br/>X-Idempotency-Key: uuid
+  Net->>LPS: ValidateGenerateAsync(req)
+  LPS-->>Net: ServiceResult.Ok
+  Net->>Net: JobService.EnqueueAsync<br/>(LessonPlanGenerate, payload)
+  Net-->>UI: 202 { jobId }
+  UI->>Net: WS subscribe /hubs/generation
+  Note over Net: JobBackgroundService picks up jobId
+  Net->>LPS: GenerateAsync(req) (in BG scope)
   LPS->>Client: GenerateLessonPlanAsync(AiLessonPlanRequest)
   Client->>Route: POST /api/lesson-plan/generate
   Route->>Route: build PlanContext<br/>(language = req.language or req.nativeLanguage)
@@ -52,9 +58,12 @@ sequenceDiagram
   Client-->>LPS: response
   LPS->>LPS: Map to LessonPlanResponseDto
   LPS-->>Net: ServiceResult.Ok(response)
-  Net-->>UI: 200 { topic, lessons[], usage[] }
-  UI->>UI: render generated plan; user clicks "Save to Library"
+  Net->>Net: Job.ResultJson = JSON(response)<br/>Status = Completed
+  Net->>UI: SignalR JobUpdated<br/>(via user-{userId} group)
+  UI->>UI: parsePlanResult(event), render plan<br/>user clicks "Save to Library"
 ```
+
+This is the same SignalR job pattern every AI-generation endpoint follows — see [backend/04-infrastructure.md#realtime--job-pipeline-signalr--background-worker](../backend/04-infrastructure.md#realtime--job-pipeline-signalr--background-worker) for the executor + queue + hub plumbing. Other flow docs in this folder focus on the AI-side detail (CrewAI agents + tasks + Python services) and abstract the .NET-side hand-off as `Net → AI → Net → SignalR`; the envelope is identical.
 
 ## Task prompt (Default)
 

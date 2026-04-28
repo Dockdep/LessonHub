@@ -89,7 +89,29 @@ public sealed class DocumentService : IDocumentService
             return ServiceResult<DocumentDto>.Internal("Failed to save document.");
         }
 
-        // Synchronous ingestion — caller is on the loading screen.
+        // Ingestion is now a background job (DocumentIngestExecutor). Caller
+        // gets the doc back with status="Pending"; the SignalR hub pushes the
+        // status transition once the executor finishes.
+        return ServiceResult<DocumentDto>.Ok(ToDto(doc));
+    }
+
+    public async Task<ServiceResult> ValidateIngestAsync(int documentId, CancellationToken ct = default)
+    {
+        var doc = await _docs.GetForUserAsync(documentId, _currentUser.Id, ct);
+        if (doc == null) return ServiceResult.NotFound();
+        if (string.IsNullOrWhiteSpace(doc.StorageUri))
+            return ServiceResult.BadRequest("Document has not been written to storage yet.");
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<DocumentDto>> IngestAsync(int documentId, CancellationToken ct = default)
+    {
+        var validation = await ValidateIngestAsync(documentId, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<DocumentDto>(default, validation.Error, validation.Message);
+
+        var doc = (await _docs.GetForUserAsync(documentId, _currentUser.Id, ct))!;
+
         try
         {
             var apiKey = await _keyProvider.GetCurrentUserKeyAsync();
@@ -106,6 +128,7 @@ public sealed class DocumentService : IDocumentService
             doc.IngestedAt = DateTime.UtcNow;
             await _docs.SaveChangesAsync(ct);
             _logger.LogInformation("Document {DocId} ingested with {Count} chunks", doc.Id, ingest.ChunkCount);
+            return ServiceResult<DocumentDto>.Ok(ToDto(doc));
         }
         catch (Exception ex)
         {
@@ -113,10 +136,8 @@ public sealed class DocumentService : IDocumentService
             doc.IngestionStatus = "Failed";
             doc.IngestionError = Truncate(ex.Message, 2000);
             await _docs.SaveChangesAsync(CancellationToken.None);
-            // Document row stays so the user can see what failed and retry.
+            return ServiceResult<DocumentDto>.Internal($"Ingestion failed: {ex.Message}");
         }
-
-        return ServiceResult<DocumentDto>.Ok(ToDto(doc));
     }
 
     public async Task<ServiceResult> DeleteAsync(int id, CancellationToken ct = default)

@@ -1,12 +1,19 @@
 # Caddy reverse-proxy in front of LessonsHub.
 # Routes:
 #   /api/*       → .NET API (LessonsHub container, port 8080)
+#   /hubs/*      → .NET API (SignalR — needs WebSocket upgrade passthrough)
+#   /swagger*    → .NET API
 #   everything else → Angular SSR (lessonshub-ui container, port 4000)
 #
 # Browser sees a single origin (http://localhost) so no CORS,
 # and Angular's relative `/api/*` URLs continue to work as-is.
 :80 {
     handle /api/* {
+        reverse_proxy lessonshub:8080
+    }
+    handle /hubs/* {
+        # SignalR opens via /hubs/<name>/negotiate (POST) then upgrades to WebSocket.
+        # Caddy's reverse_proxy handles WS upgrade headers automatically.
         reverse_proxy lessonshub:8080
     }
     handle /swagger* {

@@ -100,6 +100,9 @@ jobs:
           echo "AI_URL=$AI_URL" >> $GITHUB_ENV
 
       # ---- 2. .NET API (public, talks to AI via S2S IAM) ---------------
+      # min-instances=1 + no-cpu-throttling: keeps one warm instance with full
+      # CPU 24/7. Required for SignalR — WebSockets need CPU between requests
+      # to drive heartbeats / push events. ~$15-20/mo for this single service.
       - name: Deploy lessonshub
         run: |
           gcloud run deploy lessonshub \
@@ -107,6 +110,8 @@ jobs:
             --region=${{ env.REGION }} \
             --service-account=sa-lessonshub@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
             --allow-unauthenticated \
+            --min-instances=1 \
+            --no-cpu-throttling \
             --add-cloudsql-instances=${{ env.SQL_INSTANCE }} \
             --set-secrets="ConnectionStrings__DefaultConnection=db-url-lessonshub:latest,JwtSettings__SecretKey=jwt-secret:latest,GoogleAuth__ClientId=google-oauth-client-id:latest" \
             --set-env-vars="LessonsAiApi__BaseUrl=$AI_URL,ASPNETCORE_ENVIRONMENT=Production,DocumentStorage__Strategy=Gcs,DocumentStorage__GcsBucket=${{ vars.GCP_PROJECT_ID }}-documents" \

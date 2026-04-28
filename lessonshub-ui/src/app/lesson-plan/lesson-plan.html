@@ -1,5 +1,11 @@
 <div class="generator-container fade-in">
 
+  <app-generation-banner
+    [phase]="generationPhase()"
+    label="your lesson plan"
+    etaHint="this can take 30–90s">
+  </app-generation-banner>
+
   <mat-card class="form-card">
     <div class="decorative-bar"></div>
     <mat-card-header>
@@ -105,9 +111,8 @@
     <mat-card-actions align="end">
       <button mat-button (click)="resetForm()">Reset</button>
       <button mat-raised-button color="primary" class="generate-btn" (click)="generateLessonPlan()" [disabled]="isLoading()">
-        <mat-spinner diameter="20" *ngIf="isLoading()" class="spinner-white"></mat-spinner>
-        <span *ngIf="!isLoading()">Generate Plan</span>
-        <mat-icon *ngIf="!isLoading()" class="btn-icon-right">auto_awesome</mat-icon>
+        <span>Generate Plan</span>
+        <mat-icon class="btn-icon-right">auto_awesome</mat-icon>
       </button>
     </mat-card-actions>
   </mat-card>

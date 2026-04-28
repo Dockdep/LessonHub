@@ -39,28 +39,57 @@ public sealed class LessonService : ILessonService
         if (lesson == null || !await _plans.HasReadAccessAsync(lesson.LessonPlanId, userId, ct))
             return ServiceResult<LessonDetailDto>.NotFound();
 
-        if (string.IsNullOrWhiteSpace(lesson.Content))
+        // Read is now pure read. When Content is empty the frontend triggers
+        // POST /api/lesson/{id}/generate-content explicitly — that endpoint
+        // enqueues a job and the result streams in via SignalR.
+        return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto(userId));
+    }
+
+    public async Task<ServiceResult> ValidateGenerateContentAsync(int lessonId, CancellationToken ct = default)
+    {
+        var userId = _currentUser.Id;
+        var lesson = await _lessons.GetWithDetailsAsync(lessonId, userId, ct);
+        if (lesson == null || !await _plans.HasReadAccessAsync(lesson.LessonPlanId, userId, ct))
+            return ServiceResult.NotFound();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<LessonDetailDto>> GenerateContentAsync(int lessonId, CancellationToken ct = default)
+    {
+        var validation = await ValidateGenerateContentAsync(lessonId, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<LessonDetailDto>(default, validation.Error, validation.Message);
+
+        var userId = _currentUser.Id;
+        var lesson = (await _lessons.GetWithDetailsAsync(lessonId, userId, ct))!;
+
+        // No-op when content is already there — keeps the executor idempotent
+        // for double-fires from idempotency-key dedupe.
+        if (!string.IsNullOrWhiteSpace(lesson.Content))
+            return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto(userId));
+
+        try
         {
             _logger.LogInformation("Generating content for Lesson {Id}...", lessonId);
-            try
-            {
-                var contentRequest = await BuildContentRequestAsync(lesson, bypassDocCache: false, ct);
-                var contentResponse = await _ai.GenerateLessonContentAsync(contentRequest);
-                if (contentResponse != null && !string.IsNullOrWhiteSpace(contentResponse.Content))
-                {
-                    lesson.Content = contentResponse.Content;
-                    await _lessons.SaveChangesAsync(ct);
-                    _logger.LogInformation("Content generated and saved for Lesson {Id}", lessonId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating content for Lesson {Id}", lessonId);
-                // Best-effort lazy generation — surface the lesson even if AI failed.
-            }
-        }
+            var contentRequest = await BuildContentRequestAsync(lesson, bypassDocCache: false, ct);
+            var contentResponse = await _ai.GenerateLessonContentAsync(contentRequest);
+            if (contentResponse == null || string.IsNullOrWhiteSpace(contentResponse.Content))
+                return ServiceResult<LessonDetailDto>.Internal("Failed to generate lesson content.");
 
-        return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto(userId));
+            lesson.Content = contentResponse.Content;
+            await _lessons.SaveChangesAsync(ct);
+            return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto(userId));
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "Timeout generating content for Lesson {Id}", lessonId);
+            return ServiceResult<LessonDetailDto>.Timeout();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating content for Lesson {Id}", lessonId);
+            return ServiceResult<LessonDetailDto>.Internal($"An error occurred while generating the lesson. {ex.Message}");
+        }
     }
 
     public async Task<ServiceResult<LessonDetailDto>> UpdateAsync(int lessonId, UpdateLessonInfoDto request, CancellationToken ct = default)
@@ -80,13 +109,24 @@ public sealed class LessonService : ILessonService
         return ServiceResult<LessonDetailDto>.Ok(lesson.ToDetailDto(userId));
     }
 
-    public async Task<ServiceResult<LessonDetailDto>> RegenerateContentAsync(int lessonId, bool bypassDocCache, CancellationToken ct = default)
+    public async Task<ServiceResult> ValidateRegenerateContentAsync(int lessonId, CancellationToken ct = default)
     {
         var userId = _currentUser.Id;
         var lesson = await _lessons.GetWithDetailsAsync(lessonId, userId, ct);
         // Regeneration overwrites shared state — owner-only.
         if (lesson == null || lesson.LessonPlan?.UserId != userId)
-            return ServiceResult<LessonDetailDto>.NotFound();
+            return ServiceResult.NotFound();
+        return ServiceResult.Ok();
+    }
+
+    public async Task<ServiceResult<LessonDetailDto>> RegenerateContentAsync(int lessonId, bool bypassDocCache, CancellationToken ct = default)
+    {
+        var validation = await ValidateRegenerateContentAsync(lessonId, ct);
+        if (!validation.IsSuccess)
+            return new ServiceResult<LessonDetailDto>(default, validation.Error, validation.Message);
+
+        var userId = _currentUser.Id;
+        var lesson = (await _lessons.GetWithDetailsAsync(lessonId, userId, ct))!;
 
         try
         {

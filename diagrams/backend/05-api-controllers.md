@@ -1,8 +1,17 @@
 # Backend — 05 API Controllers
 
-Seven controllers in [LessonsHub/Controllers/](../../LessonsHub/Controllers/). Each is a thin HTTP adapter — bind request → call facade → translate `ServiceResult<T>` → return `IActionResult`.
+Eight controllers in [LessonsHub/Controllers/](../../LessonsHub/Controllers/). Each is a thin HTTP adapter — bind request → call facade → translate `ServiceResult<T>` → return `IActionResult`.
 
 > **Source files**: [LessonsHub/Controllers/](../../LessonsHub/Controllers/), [LessonsHub/Extensions/ServiceResultExtensions.cs](../../LessonsHub/Extensions/ServiceResultExtensions.cs).
+
+## Two response patterns
+
+| Pattern | Used by | Shape |
+|---|---|---|
+| **Sync** — `200 OK { value }` or `4xx/5xx { message }` | All read endpoints + sync mutations (login, save plan, edit, share, delete, schedule, complete, etc.) | Returns the result body inline. |
+| **Async (job)** — `202 Accepted { jobId }` | All AI-generation endpoints: lesson plan generate, lesson content generate / regenerate, exercise generate / retry, exercise review, document upload (the upload itself is sync; the **ingest** is the job) | Controller validates synchronously then enqueues. Result lands via SignalR (`/hubs/generation`) or HTTP polling on `GET /api/jobs/{id}`. See [04-infrastructure.md#realtime--job-pipeline-signalr--background-worker](04-infrastructure.md#realtime--job-pipeline-signalr--background-worker). |
+
+Async endpoints accept an optional `X-Idempotency-Key` header (UUID per click). Same `(UserId, Type, Key)` returns the existing job's id rather than enqueueing a duplicate.
 
 ## The `ToActionResult()` extension
 
@@ -45,15 +54,22 @@ flowchart LR
   lsv[ILessonService]:::svc
   esv[IExerciseService]:::svc
   dsv[IDocumentService]:::svc
+  jsv[IJobService]:::svc
+
+  jc[JobsController]:::ctrl
 
   ac --> asv
   upc --> upsv
   lpc --> lpsv
+  lpc --> jsv
   lpsc --> lpssv
   ldc --> ldsv
   lc --> lsv
   lc --> esv
+  lc --> jsv
   dc --> dsv
+  dc --> jsv
+  jc --> jsv
 ```
 
 ## Endpoint table
@@ -79,7 +95,7 @@ flowchart LR
 | GET | `/api/lessonplan/shared-with-me` | — | `List<LessonPlanSummaryDto>` | All plans where the current user is in `LessonPlanShare`. |
 | DELETE | `/api/lessonplan/{id}` | — | `200 { message }` | Owner-only. Cleans up empty `LessonDay` rows. |
 | PUT | `/api/lessonplan/{id}` | `UpdateLessonPlanRequestDto` | `LessonPlanDetailDto` | Owner-only. Adds/removes/updates lessons, updates plan-level fields including `LanguageToLearn` / `UseNativeLanguage`. |
-| POST | `/api/lessonplan/generate` | `LessonPlanRequestDto` | `LessonPlanResponseDto` | Calls Python AI to generate (stateless — doesn't save). |
+| POST | `/api/lessonplan/generate` | `LessonPlanRequestDto` (+ optional `X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Validates synchronously, enqueues `LessonPlanGenerate` job, result via SignalR. |
 | POST | `/api/lessonplan/save` | `SaveLessonPlanRequestDto` | `SaveLessonPlanResponseDto` | Persists a previously-generated plan. |
 
 ### [LessonPlanShareController](../../LessonsHub/Controllers/LessonPlanShareController.cs)  `[Authorize]`
@@ -105,14 +121,15 @@ flowchart LR
 
 | Method | Route | Body | Returns | Notes |
 |---|---|---|---|---|
-| GET | `/api/lesson/{id}` | — | `LessonDetailDto` | Lazy-generates `Content` on first read by calling Python AI. Filters Exercises to caller's only. |
+| GET | `/api/lesson/{id}` | — | `LessonDetailDto` | **Pure read** — does NOT auto-generate Content. Frontend detects empty `content` and calls `generate-content` explicitly. Filters Exercises to caller's only. |
 | PUT | `/api/lesson/{id}` | `UpdateLessonInfoDto` | `LessonDetailDto` | Owner-only. Edit lesson metadata. |
-| POST | `/api/lesson/{id}/regenerate-content` | — | `LessonDetailDto` | Owner-only. Forces a fresh Python AI call. `?bypassDocCache=true` skips the doc-search cache. |
+| POST | `/api/lesson/{id}/generate-content` | — (`X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Read-access caller; explicit lazy gen for empty Content. |
+| POST | `/api/lesson/{id}/regenerate-content` | — (query `?bypassDocCache`, `X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Owner-only. Overwrites existing Content. |
 | PATCH | `/api/lesson/{id}/complete` | — | `LessonDetailDto` | Owner-only. Toggles `IsCompleted` + sets `CompletedAt`. |
 | GET | `/api/lesson/{id}/siblings` | — | `SiblingLessonsDto` (`{ prevLessonId, nextLessonId }`) | For prev/next nav in the UI. |
-| POST | `/api/lesson/{id}/generate-exercise` | — (query: `?difficulty=medium&comment=…`) | `ExerciseDto` | Anyone with read access. Tagged with the caller's `UserId`. |
-| POST | `/api/lesson/{id}/retry-exercise` | — (query: `?difficulty&comment&review`) | `ExerciseDto` | Same; uses the prior `review` to refine. |
-| POST | `/api/lesson/exercise/{exerciseId}/check` | string answer | `ExerciseAnswerDto` | Caller must own the exercise. AI scores + reviews the answer. |
+| POST | `/api/lesson/{id}/generate-exercise` | — (query `?difficulty&comment`, `X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Anyone with read access. Executor tags new exercise with caller's `UserId`. |
+| POST | `/api/lesson/{id}/retry-exercise` | — (query `?difficulty&comment&review`, `X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Uses prior `review` to refine. |
+| POST | `/api/lesson/exercise/{exerciseId}/check` | string answer (+ `X-Idempotency-Key`) | `202 { jobId }` | **Async (job)**. Caller must own the exercise; executor scores + reviews via AI. |
 
 ### [DocumentsController](../../LessonsHub/Controllers/DocumentsController.cs)  `[Authorize]`
 
@@ -120,8 +137,19 @@ flowchart LR
 |---|---|---|---|---|
 | GET | `/api/documents` | — | `List<DocumentDto>` | The user's own uploads, newest first. |
 | GET | `/api/documents/{id:int}` | — | `DocumentDto` | Owner-only. |
-| POST | `/api/documents/upload` | multipart `file` | `DocumentDto` | Owner-only. Uploads to GCS/local FS, then calls Python RAG ingest. Max 32 MB. |
+| POST | `/api/documents/upload` | multipart `file` (+ `X-Idempotency-Key`) | `202 { document, jobId }` | Upload itself is sync (file → GCS, row → status="Pending"); RAG ingest is the **async (job)** part. Max 32 MB. |
 | DELETE | `/api/documents/{id:int}` | — | `204 NoContent` | Best-effort cleanup of GCS blob; row is the source of truth. |
+
+### [JobsController](../../LessonsHub/Controllers/JobsController.cs)  `[Authorize]`
+
+Polling fallback + in-flight listing for the SignalR job pipeline.
+
+| Method | Route | Body | Returns | Notes |
+| --- | --- | --- | --- | --- |
+| GET | `/api/jobs/{id:guid}` | — | `JobDto` | 404 if not owned by caller. Polling fallback when SignalR isn't available; also used by `JobsService.subscribeToExistingJob` to handle the already-terminal race before opening the WS. |
+| GET | `/api/jobs?status=…` | — | `List<JobDto>` | Filterable by `Pending`/`Running`/`Completed`/`Failed`. |
+| GET | `/api/jobs/in-flight?type=X&relatedEntityType=Y&relatedEntityId=Z` | — | `JobDto?` | Returns the matching `Pending`/`Running` job for the current user, or `null`. Used by single-job pages on load to re-attach a banner to a job that survived navigation. |
+| GET | `/api/jobs/in-flight-for-entity?relatedEntityType=Lesson&relatedEntityId=42` | — | `List<JobDto>` | All in-flight jobs the user has on one entity. One query lets a detail page (e.g. lesson detail) repaint every active banner — content gen, exercise gen, etc. |
 
 ## Class diagram (controllers)
 

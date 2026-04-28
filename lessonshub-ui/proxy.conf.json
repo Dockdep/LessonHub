@@ -6,6 +6,13 @@
     "logLevel": "debug",
     "ws": true
   },
+  "/hubs": {
+    "target": "http://localhost:7121",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug",
+    "ws": true
+  },
   "/swagger": {
     "target": "http://localhost:7121",
     "secure": false,

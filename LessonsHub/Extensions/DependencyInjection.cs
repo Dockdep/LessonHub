@@ -4,6 +4,7 @@ using LessonsHub.Application.Abstractions.Services;
 using LessonsHub.Application.Services;
 using LessonsHub.Infrastructure.Auth;
 using LessonsHub.Infrastructure.Data;
+using LessonsHub.Infrastructure.Realtime;
 using LessonsHub.Infrastructure.Repositories;
 
 namespace LessonsHub.Extensions;
@@ -13,6 +14,10 @@ public static class DependencyInjection
     public static IServiceCollection AddCurrentUser(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        // Per-scope mutable holder. JobBackgroundService populates it from
+        // Job.UserId before resolving the executor; HTTP scopes leave it
+        // empty and CurrentUser falls through to the JWT claim.
+        services.AddScoped<UserContext>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         return services;
     }
@@ -27,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IExerciseRepository, ExerciseRepository>();
         services.AddScoped<IExerciseAnswerRepository, ExerciseAnswerRepository>();
+        services.AddScoped<IJobRepository, JobRepository>();
         return services;
     }
 
@@ -40,6 +46,33 @@ public static class DependencyInjection
         services.AddScoped<ILessonPlanService, LessonPlanService>();
         services.AddScoped<ILessonService, LessonService>();
         services.AddScoped<IExerciseService, ExerciseService>();
+        services.AddScoped<IJobService, JobService>();
+        return services;
+    }
+
+    /// <summary>
+    /// SignalR + in-memory job queue + background worker. Single-instance only:
+    /// the queue is in-process, so Cloud Run must run with --max-instances=1
+    /// until we add a Redis backplane.
+    /// </summary>
+    public static IServiceCollection AddJobInfrastructure(this IServiceCollection services)
+    {
+        services.AddSignalR();
+        services.AddSingleton<IJobQueue, ChannelJobQueue>();
+        // Registry is Scoped because executors are Scoped (they pull DbContext +
+        // repositories + per-user services). The background service creates a
+        // fresh DI scope per job and resolves the registry from there.
+        services.AddScoped<IJobExecutorRegistry, JobExecutorRegistry>();
+        services.AddHostedService<JobBackgroundService>();
+
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonPlanGenerateExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonContentGenerateExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonContentRegenerateExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.ExerciseGenerateExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.ExerciseRetryExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.ExerciseReviewExecutor>();
+        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.DocumentIngestExecutor>();
+
         return services;
     }
 }

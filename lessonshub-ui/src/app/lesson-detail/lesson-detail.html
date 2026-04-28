@@ -14,6 +14,21 @@
     <mat-icon>error</mat-icon> {{ error() }}
   </div>
 
+  <!-- Two banners — at most one is visible at a time. Same shared component
+       used by lesson-plan generation, so users get one consistent UX across
+       every long-running AI job in the app. -->
+  <app-generation-banner
+    [phase]="regenerationPhase()"
+    label="lesson content"
+    etaHint="this can take 30–90s">
+  </app-generation-banner>
+
+  <app-generation-banner
+    [phase]="exercisePhase()"
+    [label]="exerciseLabel()"
+    etaHint="this can take 15–60s">
+  </app-generation-banner>
+
   <div class="detail-layout" *ngIf="lesson() && !isLoading()">
     <!-- Main Content Column -->
     <article class="content-column">
@@ -32,9 +47,8 @@
               <mat-icon>edit</mat-icon> Edit
             </button>
             <button mat-stroked-button class="regenerate-btn" (click)="confirmRegenerate()" [disabled]="isRegenerating()">
-              <mat-spinner diameter="16" *ngIf="isRegenerating()"></mat-spinner>
-              <mat-icon *ngIf="!isRegenerating()">refresh</mat-icon>
-              <span>{{ isRegenerating() ? 'Regenerating...' : 'Regenerate' }}</span>
+              <mat-icon>refresh</mat-icon>
+              <span>Regenerate</span>
             </button>
           </div>
         </div>
@@ -118,8 +132,7 @@
           <mat-card-content>
             <div class="generate-btn-row">
               <button mat-raised-button color="primary" (click)="openGenerateDialog()" [disabled]="isGeneratingExercise()">
-                <mat-icon *ngIf="!isGeneratingExercise()">auto_awesome</mat-icon>
-                <mat-spinner diameter="20" *ngIf="isGeneratingExercise()" class="spinner-white"></mat-spinner>
+                <mat-icon>auto_awesome</mat-icon>
                 <span>Generate Task</span>
               </button>
             </div>
@@ -183,8 +196,7 @@
                       <button mat-flat-button color="accent" class="submit-btn"
                         (click)="submitAnswer(exercise)"
                         [disabled]="submittingExerciseId() === exercise.id || !getAnswerControl(exercise.id).value.trim()">
-                        <mat-spinner diameter="18" *ngIf="submittingExerciseId() === exercise.id"></mat-spinner>
-                        <span *ngIf="submittingExerciseId() !== exercise.id">Submit for Review</span>
+                        <span>Submit for Review</span>
                       </button>
                     </div>
                   </div>

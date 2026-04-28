@@ -43,8 +43,8 @@ flowchart LR
     end
   end
 
-  user -- HTTPS --> ui
-  ui -- /api/* --> api
+  user -- HTTPS<br/>HTML / JS / CSS --> ui
+  user -- HTTPS<br/>/api/* /hubs/* --> api
   ui --> google
   api -- HTTP IAM-signed<br/>Bearer token --> ai
   api --> db1
@@ -64,9 +64,11 @@ flowchart LR
 
 **Notes**
 
-- The Angular UI runs as Server-Side-Rendered Node, *not* as a static SPA. Browsers hit it directly for the initial render; subsequent calls are XHR.
+- **No proxy in front of Cloud Run.** Each service has its own `*.a.run.app` URL. The Angular SSR server reads the `API_BASE_URL` env var (set on the `lessonshub-ui` service to the .NET service's URL) and injects it into every rendered HTML page as `<meta name="api-base-url">`. The browser-side Angular code reads that meta tag and prefixes every `/api/*` and `/hubs/*` URL with it — so the browser talks **directly** to the API service cross-origin. CORS is configured on the .NET side via `CORS_ALLOWED_ORIGINS` + `AllowCredentials()` (required for SignalR WebSocket negotiate).
+- The Angular UI runs as Server-Side-Rendered Node, *not* as a static SPA. Browsers hit it directly for the initial render; subsequent calls go cross-origin to the API.
 - `.NET` → Python AI is **service-to-service** via a Google ID token (the .NET service uses `IamAuthHandler` to mint tokens; Cloud Run validates them). The AI service is not publicly reachable.
 - All three Cloud Run services connect to Postgres via the **Cloud SQL Auth Proxy** (`/cloudsql/<instance>` Unix socket); no public-IP allowlist.
+- The `lessonshub` (.NET) service runs `--min-instances=1 --no-cpu-throttling --max-instances=1` because SignalR needs an always-warm CPU for the WebSocket and the in-memory job queue can't span instances without a Redis backplane.
 - Workload Identity Federation lets GitHub Actions impersonate `sa-github-deploy` *without* a long-lived JSON key.
 
 ## Local-dev topology (docker-compose)
@@ -90,7 +92,7 @@ flowchart LR
   gemini((Gemini API)):::external
 
   user --> caddy
-  caddy -- /api/* /swagger* --> api
+  caddy -- /api/* /hubs/* /swagger* --> api
   caddy -- everything else --> ui
   ui --> google
   api --> pg
@@ -104,10 +106,13 @@ flowchart LR
 **Routing rules** (verbatim from [Caddyfile](../Caddyfile)):
 
 - `/api/*` → `lessonshub:8080` (the .NET API)
+- `/hubs/*` → `lessonshub:8080` (SignalR — Caddy's `reverse_proxy` handles WebSocket upgrades automatically)
 - `/swagger*` → `lessonshub:8080` (Swagger UI for the .NET API)
 - everything else → `lessonshub-ui:4000` (Angular SSR)
 
-The single-origin trick means the browser sees one host (`http://localhost`), so there are no CORS preflights. The Angular `/api/*` URLs work as-is.
+The single-origin trick means the browser sees one host (`http://localhost`), so there are no CORS preflights. The Angular `/api/*` URLs and the SignalR client's `/hubs/generation/negotiate` POST work as-is. (Without the `/hubs/*` rule, the WS handshake hits the Angular Express server and gets a 404 with HTML body.)
+
+The same pattern applies to `ng serve --proxy-config` for direct `:4200` dev — see [proxy.conf.json](../lessonshub-ui/proxy.conf.json), which mirrors the same three routes with `ws: true` on `/api` and `/hubs`.
 
 ## External integrations
 
