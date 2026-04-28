@@ -1,0 +1,17 @@
+{% if language %}Write all content in {{ language }}.{% endif %}
+Find the most relevant YouTube video tutorials for the following lesson:
+
+Topic: {{ topic }}
+Lesson Name: {{ lesson_name }}
+Lesson Topic: {{ lesson_topic }}
+Lesson Description: {{ lesson_description }}
+
+Instructions:
+1. Use the "YouTube Video Search" tool to search for videos related to this lesson
+2. Try different search queries to find the best educational content:
+   - Search for "{{ topic }} {{ lesson_name }} tutorial"
+   - Search for "{{ topic }} for beginners" if it's an introductory lesson
+3. From the search results, select exactly {{ limit }} videos that best match the lesson content
+4. For each selected video, add a description explaining why it's relevant to this lesson
+
+The tool will return real YouTube video URLs that you should include in your response.

@@ -1,0 +1,172 @@
+<div class="generator-container fade-in">
+
+  <mat-card class="form-card">
+    <div class="decorative-bar"></div>
+    <mat-card-header>
+      <mat-card-title>Create Curriculum</mat-card-title>
+      <mat-card-subtitle>Configure your AI-generated learning path</mat-card-subtitle>
+    </mat-card-header>
+
+    @if (sourceDocument(); as src) {
+      <div class="source-doc-banner">
+        <mat-icon>menu_book</mat-icon>
+        <div class="source-doc-info">
+          <strong>Source document: {{ src.name }}</strong>
+          <span>Lessons will be grounded in this book's content via RAG.</span>
+        </div>
+        <button mat-icon-button (click)="clearSourceDocument()" matTooltip="Remove source document">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    }
+
+    <mat-card-content>
+      <form [formGroup]="form" class="form-grid">
+        <div class="form-col">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Lesson Type</mat-label>
+            <mat-select formControlName="lessonType">
+              <mat-option *ngFor="let type of lessonTypes" [value]="type">{{ type }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Plan Name</mat-label>
+            <input matInput formControlName="planName" placeholder="e.g. Intro to Python">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ form.get('lessonType')?.value === 'Language' ? 'Native Language' : 'Language' }}</mat-label>
+            <input matInput formControlName="nativeLanguage" placeholder="e.g. English, Ukrainian">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width" *ngIf="form.get('lessonType')?.value === 'Language'">
+            <mat-label>Language to Learn</mat-label>
+            <input matInput formControlName="languageToLearn" placeholder="e.g. Spanish, Japanese">
+          </mat-form-field>
+        </div>
+
+        <div class="form-col">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Topic</mat-label>
+            <input matInput formControlName="topic" placeholder="e.g. Data Structures">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Duration (Days)</mat-label>
+            <input matInput type="number" formControlName="numberOfDays" min="1" max="30">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width" *ngIf="availableDocuments().length > 0">
+            <mat-label>Source Document (optional)</mat-label>
+            <mat-select [value]="sourceDocument()?.id ?? null"
+                        (selectionChange)="attachDocumentById($event.value)">
+              <mat-option [value]="null">— None —</mat-option>
+              <mat-option *ngFor="let doc of availableDocuments()" [value]="doc.id">{{ doc.name }}</mat-option>
+            </mat-select>
+            <mat-hint>Lessons will be grounded in the document's content via RAG.</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <div class="form-full">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description & Goals</mat-label>
+            <textarea matInput formControlName="description" rows="4" placeholder="Describe what you want to achieve..."></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-full" *ngIf="form.get('lessonType')?.value === 'Language'">
+          <label class="docs-toggle">
+            <input type="checkbox" formControlName="useNativeLanguage">
+            <span class="docs-toggle-text">
+              <strong>Render the lesson in my native language</strong>
+              <small>When checked, explanations and headings are written in your native language with example phrases in the language you're learning. Uncheck for an immersive experience where the entire lesson is written in the target language.</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="form-full" *ngIf="form.get('lessonType')?.value === 'Technical'">
+          <label class="docs-toggle">
+            <input type="checkbox" formControlName="bypassDocCache">
+            <span class="docs-toggle-text">
+              <strong>Use fresh documentation</strong>
+              <small>Skip the cached docs and re-fetch the latest from the framework site (slower; useful when a new version just released).</small>
+            </span>
+          </label>
+        </div>
+      </form>
+
+      <div class="error-banner" *ngIf="error()">
+        <mat-icon>warning</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-button (click)="resetForm()">Reset</button>
+      <button mat-raised-button color="primary" class="generate-btn" (click)="generateLessonPlan()" [disabled]="isLoading()">
+        <mat-spinner diameter="20" *ngIf="isLoading()" class="spinner-white"></mat-spinner>
+        <span *ngIf="!isLoading()">Generate Plan</span>
+        <mat-icon *ngIf="!isLoading()" class="btn-icon-right">auto_awesome</mat-icon>
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- Results Section -->
+  <div class="results-area" *ngIf="generatedPlan()">
+    <div class="results-header">
+      <div class="plan-meta">
+        <mat-form-field appearance="outline" class="edit-plan-name">
+          <mat-label>Plan Name</mat-label>
+          <input matInput [formControl]="planNameEdit">
+        </mat-form-field>
+        <mat-chip-set>
+          <mat-chip>{{ generatedPlan()!.topic }}</mat-chip>
+          <mat-chip class="count-chip">{{ generatedPlan()!.lessons.length }} Lessons</mat-chip>
+        </mat-chip-set>
+      </div>
+
+      <div class="plan-actions">
+        <button mat-stroked-button (click)="downloadJson()">
+          <mat-icon>download</mat-icon> JSON
+        </button>
+        <button mat-raised-button color="accent" (click)="saveLessonPlan()" [disabled]="isSaving()">
+          <mat-spinner diameter="20" *ngIf="isSaving()"></mat-spinner>
+          <span *ngIf="!isSaving()">Save to Library</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="success-message" *ngIf="saveSuccess()">
+      <mat-icon>check_circle</mat-icon> Plan saved successfully!
+    </div>
+
+    <div class="lessons-grid">
+      <mat-card class="lesson-result-card" *ngFor="let lesson of generatedPlan()!.lessons; let i = index">
+        <div class="card-left">
+          <div class="index-badge">{{ lesson.lessonNumber }}</div>
+        </div>
+        <div class="card-right" *ngIf="editingLessonIndex !== i" (click)="editingLessonIndex = i">
+          <h3 class="result-title">{{ lesson.name }}</h3>
+          <p class="result-desc">{{ lesson.shortDescription }}</p>
+        </div>
+        <div class="card-right card-edit-fields" *ngIf="editingLessonIndex === i">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Lesson Name</mat-label>
+            <input matInput [value]="lesson.name" (input)="lesson.name = $any($event.target).value">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput [value]="lesson.shortDescription" (input)="lesson.shortDescription = $any($event.target).value" rows="2"></textarea>
+          </mat-form-field>
+          <div class="card-edit-actions">
+            <button mat-button color="primary" (click)="editingLessonIndex = -1">Done</button>
+            <button mat-icon-button color="warn" (click)="removeLesson(i)" matTooltip="Remove lesson">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+</div>

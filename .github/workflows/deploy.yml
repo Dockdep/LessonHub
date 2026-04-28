@@ -1,0 +1,150 @@
+name: Deploy to Cloud Run
+
+# Manual gate only — equivalent to GitLab's `when: manual`. Run from the
+# Actions tab in GitHub. The "Run workflow" button starts a deploy.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read    # checkout
+  id-token: write   # OIDC token exchange for Workload Identity Federation
+
+env:
+  REGION: us-central1
+  REGISTRY: us-central1-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/lessonshub
+  SQL_INSTANCE: ${{ vars.GCP_PROJECT_ID }}:us-central1:lessonshub-db
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Build all three images in parallel and push to Artifact Registry.
+  # Mirrors GitLab's matrix-of-services pattern.
+  # -----------------------------------------------------------------------
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        service:
+          - name: lessonshub
+            context: .
+            dockerfile: LessonsHub/Dockerfile
+          - name: lessonshub-ui
+            context: ./lessonshub-ui
+            dockerfile: lessonshub-ui/Dockerfile
+          - name: lessons-ai-api
+            context: ./lessons-ai-api
+            dockerfile: lessons-ai-api/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push ${{ matrix.service.name }}
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ matrix.service.name }}:${{ env.IMAGE_TAG }}"
+          docker build -t "$IMAGE" -f "${{ matrix.service.dockerfile }}" "${{ matrix.service.context }}"
+          docker push "$IMAGE"
+
+  # -----------------------------------------------------------------------
+  # Deploy in dependency order so URL chaining works on first deploy:
+  #   AI (internal) → .NET (knows AI URL) → UI (knows .NET URL) → CORS update
+  # -----------------------------------------------------------------------
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # ---- 1. Python AI service (IAM-protected) ------------------------
+      # ingress=all + no-allow-unauthenticated: reachable on the public run.app
+      # URL but every request must carry a valid Google ID token. .NET attaches
+      # one via IamAuthHandler. ingress=internal would only accept VPC traffic,
+      # which Cloud Run-to-Cloud Run via run.app URLs is not.
+      - name: Deploy lessons-ai-api
+        run: |
+          gcloud run deploy lessons-ai-api \
+            --image="${{ env.REGISTRY }}/lessons-ai-api:${{ env.IMAGE_TAG }}" \
+            --region=${{ env.REGION }} \
+            --service-account=sa-lessons-ai-api@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --no-allow-unauthenticated \
+            --ingress=all \
+            --add-cloudsql-instances=${{ env.SQL_INSTANCE }} \
+            --set-secrets="DATABASE_URL=db-url-lessonsai:latest,CONTEXT7_API_KEY=context7-api-key:latest" \
+            --quiet
+
+          # Allow .NET to invoke (idempotent)
+          gcloud run services add-iam-policy-binding lessons-ai-api \
+            --member="serviceAccount:sa-lessonshub@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
+            --role=roles/run.invoker \
+            --region=${{ env.REGION }} \
+            --quiet
+
+          AI_URL=$(gcloud run services describe lessons-ai-api --region=${{ env.REGION }} --format='value(status.url)')
+          echo "AI_URL=$AI_URL" >> $GITHUB_ENV
+
+      # ---- 2. .NET API (public, talks to AI via S2S IAM) ---------------
+      - name: Deploy lessonshub
+        run: |
+          gcloud run deploy lessonshub \
+            --image="${{ env.REGISTRY }}/lessonshub:${{ env.IMAGE_TAG }}" \
+            --region=${{ env.REGION }} \
+            --service-account=sa-lessonshub@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --allow-unauthenticated \
+            --add-cloudsql-instances=${{ env.SQL_INSTANCE }} \
+            --set-secrets="ConnectionStrings__DefaultConnection=db-url-lessonshub:latest,JwtSettings__SecretKey=jwt-secret:latest,GoogleAuth__ClientId=google-oauth-client-id:latest" \
+            --set-env-vars="LessonsAiApi__BaseUrl=$AI_URL,ASPNETCORE_ENVIRONMENT=Production,DocumentStorage__Strategy=Gcs,DocumentStorage__GcsBucket=${{ vars.GCP_PROJECT_ID }}-documents" \
+            --quiet
+
+          API_URL=$(gcloud run services describe lessonshub --region=${{ env.REGION }} --format='value(status.url)')
+          echo "API_URL=$API_URL" >> $GITHUB_ENV
+
+      # ---- 3. Angular SSR UI (public, knows API URL via env) -----------
+      - name: Deploy lessonshub-ui
+        run: |
+          gcloud run deploy lessonshub-ui \
+            --image="${{ env.REGISTRY }}/lessonshub-ui:${{ env.IMAGE_TAG }}" \
+            --region=${{ env.REGION }} \
+            --service-account=sa-lessonshub-ui@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com \
+            --allow-unauthenticated \
+            --set-env-vars="API_BASE_URL=$API_URL,NG_ALLOWED_HOSTS=*" \
+            --set-secrets="GOOGLE_OAUTH_CLIENT_ID=google-oauth-client-id:latest" \
+            --quiet
+
+          UI_URL=$(gcloud run services describe lessonshub-ui --region=${{ env.REGION }} --format='value(status.url)')
+          echo "UI_URL=$UI_URL" >> $GITHUB_ENV
+
+      # ---- 4. Update .NET CORS allowlist with the now-known UI URL -----
+      - name: Update CORS on .NET service
+        run: |
+          gcloud run services update lessonshub \
+            --region=${{ env.REGION }} \
+            --update-env-vars="CORS_ALLOWED_ORIGINS=$UI_URL" \
+            --quiet
+
+      - name: Deploy summary
+        run: |
+          echo "## Deploy summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| UI  | $UI_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| API | $API_URL |" >> $GITHUB_STEP_SUMMARY
+          echo "| AI  | $AI_URL (internal) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Image tag | \`${{ env.IMAGE_TAG }}\` |" >> $GITHUB_STEP_SUMMARY

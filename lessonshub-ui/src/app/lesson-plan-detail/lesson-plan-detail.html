@@ -1,0 +1,152 @@
+<div class="detail-container fade-in">
+  <a routerLink="/lesson-plans" class="back-link">
+    <mat-icon>arrow_back</mat-icon>
+    <span>Back to My Plans</span>
+  </a>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading()"></mat-progress-bar>
+
+  <div class="error-banner" *ngIf="error()">
+    <mat-icon>warning</mat-icon>
+    <span>{{ error() }}</span>
+  </div>
+
+  <!-- View Mode -->
+  <div *ngIf="plan() && !isLoading() && !isEditing()">
+    <div class="plan-header">
+      <div class="plan-header-left">
+        <div class="plan-icon">
+          <mat-icon>menu_book</mat-icon>
+        </div>
+        <div>
+          <h1 class="plan-title">{{ plan()!.name }}</h1>
+          <mat-chip-set>
+            <mat-chip>{{ plan()!.topic }}</mat-chip>
+            <mat-chip *ngIf="plan()!.nativeLanguage">{{ plan()!.nativeLanguage }}</mat-chip>
+            <mat-chip *ngIf="plan()!.languageToLearn">→ {{ plan()!.languageToLearn }}</mat-chip>
+            <mat-chip class="count-chip">{{ plan()!.lessons.length }} Lessons</mat-chip>
+          </mat-chip-set>
+        </div>
+      </div>
+      <div class="plan-header-right">
+        <span class="plan-date">{{ plan()!.createdDate | date:'mediumDate' }}</span>
+        <span class="shared-tag" *ngIf="!plan()!.isOwner">
+          <mat-icon>group</mat-icon> Shared by {{ plan()!.ownerName || 'another user' }}
+        </span>
+        <div class="header-actions" *ngIf="plan()!.isOwner">
+          <button mat-stroked-button class="share-btn" (click)="openShareDialog()">
+            <mat-icon>group_add</mat-icon> Share
+          </button>
+          <button mat-stroked-button color="primary" class="edit-btn" (click)="startEditing()">
+            <mat-icon>edit</mat-icon> Edit
+          </button>
+          <button mat-stroked-button color="warn" class="delete-btn" (click)="confirmDelete()" [disabled]="isDeleting()">
+            <mat-icon>delete</mat-icon> Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p class="plan-description" *ngIf="plan()!.description">{{ plan()!.description }}</p>
+
+    <h2 class="section-title">Lessons</h2>
+
+    <div class="lessons-list" *ngIf="plan()!.lessons.length > 0">
+      <a class="lesson-card" [class.completed]="lesson.isCompleted" *ngFor="let lesson of plan()!.lessons" [routerLink]="['/lesson', lesson.id]">
+        <div class="lesson-num" [class.completed]="lesson.isCompleted">
+          <mat-icon *ngIf="lesson.isCompleted" class="check-icon">check</mat-icon>
+          <span *ngIf="!lesson.isCompleted">{{ lesson.lessonNumber }}</span>
+        </div>
+        <div class="lesson-info">
+          <h3 class="lesson-name">{{ lesson.name }}</h3>
+          <span class="lesson-topic" *ngIf="lesson.lessonTopic">{{ lesson.lessonTopic }}</span>
+          <p class="lesson-desc">{{ lesson.shortDescription }}</p>
+        </div>
+        <mat-icon class="arrow-icon">chevron_right</mat-icon>
+      </a>
+    </div>
+
+    <div class="empty-state" *ngIf="plan()!.lessons.length === 0">
+      <mat-icon>school</mat-icon>
+      <p>No lessons in this plan yet.</p>
+    </div>
+  </div>
+
+  <!-- Edit Mode -->
+  <div *ngIf="plan() && !isLoading() && isEditing()">
+    <div class="edit-section">
+      <div class="edit-header">
+        <h1 class="plan-title">Edit Plan</h1>
+        <div class="edit-actions">
+          <button mat-button (click)="cancelEditing()">Cancel</button>
+          <button mat-raised-button color="primary" (click)="saveEdits()" [disabled]="isSaving()">
+            <mat-spinner diameter="20" *ngIf="isSaving()"></mat-spinner>
+            <span *ngIf="!isSaving()">Save Changes</span>
+          </button>
+        </div>
+      </div>
+
+      <form [formGroup]="editForm">
+        <div class="edit-form-grid">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Plan Name</mat-label>
+            <input matInput formControlName="name">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Topic</mat-label>
+            <input matInput formControlName="topic">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ plan()?.languageToLearn ? 'Native Language' : 'Language' }}</mat-label>
+            <input matInput formControlName="nativeLanguage">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width" *ngIf="plan()?.languageToLearn">
+            <mat-label>Language to Learn</mat-label>
+            <input matInput formControlName="languageToLearn">
+          </mat-form-field>
+
+          <label class="docs-toggle" *ngIf="plan()?.languageToLearn">
+            <input type="checkbox" formControlName="useNativeLanguage">
+            <span class="docs-toggle-text">
+              <strong>Render the lesson in my native language</strong>
+              <small>Uncheck for an immersive experience where the entire lesson is written in the target language.</small>
+            </span>
+          </label>
+
+          <mat-form-field appearance="outline" class="full-width edit-desc">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="description" rows="3"></textarea>
+          </mat-form-field>
+        </div>
+
+        <h2 class="section-title">Lessons</h2>
+
+        <div class="lessons-list" formArrayName="lessons">
+          <div class="lesson-card edit-lesson-card" *ngFor="let lessonCtrl of editLessons.controls; let i = index" [formGroupName]="i">
+            <div class="lesson-num">{{ lessonCtrl.get('lessonNumber')!.value }}</div>
+            <div class="lesson-edit-fields">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Lesson Name</mat-label>
+                <input matInput formControlName="name">
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Topic</mat-label>
+                <input matInput formControlName="lessonTopic">
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Description</mat-label>
+                <textarea matInput formControlName="shortDescription" rows="2"></textarea>
+              </mat-form-field>
+            </div>
+            <button mat-icon-button color="warn" (click)="removeEditLesson(i)" class="remove-lesson-btn">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

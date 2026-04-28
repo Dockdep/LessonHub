@@ -1,0 +1,70 @@
+<div class="plans-container fade-in">
+  <div class="page-header">
+    <h1 class="page-title">My Plans</h1>
+    <a mat-raised-button color="primary" routerLink="/lesson-plan" class="create-btn">
+      <mat-icon>add</mat-icon>
+      Create New
+    </a>
+  </div>
+
+  <mat-progress-bar mode="indeterminate" *ngIf="isLoading()"></mat-progress-bar>
+
+  <div class="plans-grid" *ngIf="!isLoading() && plans().length > 0">
+    <mat-card class="plan-card" *ngFor="let plan of plans()" [routerLink]="['/lesson-plans', plan.id]">
+      <div class="card-top">
+        <div class="plan-icon">
+          <mat-icon>menu_book</mat-icon>
+        </div>
+        <div class="plan-info">
+          <h3 class="plan-name">{{ plan.name }}</h3>
+          <mat-chip-set>
+            <mat-chip>{{ plan.topic }}</mat-chip>
+            <mat-chip class="count-chip">{{ plan.lessonsCount }} Lessons</mat-chip>
+          </mat-chip-set>
+        </div>
+      </div>
+      <p class="plan-desc" *ngIf="plan.description">{{ plan.description }}</p>
+      <div class="card-footer">
+        <span class="plan-date">{{ plan.createdDate | date:'mediumDate' }}</span>
+      </div>
+    </mat-card>
+  </div>
+
+  <div class="empty-state" *ngIf="!isLoading() && plans().length === 0">
+    <mat-icon>library_books</mat-icon>
+    <h3>No plans yet</h3>
+    <p>Create your first AI-generated curriculum to get started.</p>
+    <a mat-raised-button color="primary" routerLink="/lesson-plan">
+      <mat-icon>auto_awesome</mat-icon>
+      Create Plan
+    </a>
+  </div>
+
+  <div class="shared-section" *ngIf="sharedLoading() || sharedPlans().length > 0">
+    <div class="page-header section-header">
+      <h2 class="page-title section-title">Shared with me</h2>
+    </div>
+    <mat-progress-bar mode="indeterminate" *ngIf="sharedLoading()"></mat-progress-bar>
+    <div class="plans-grid" *ngIf="!sharedLoading() && sharedPlans().length > 0">
+      <mat-card class="plan-card shared" *ngFor="let plan of sharedPlans()" [routerLink]="['/lesson-plans', plan.id]">
+        <div class="card-top">
+          <div class="plan-icon">
+            <mat-icon>group</mat-icon>
+          </div>
+          <div class="plan-info">
+            <h3 class="plan-name">{{ plan.name }}</h3>
+            <mat-chip-set>
+              <mat-chip>{{ plan.topic }}</mat-chip>
+              <mat-chip class="count-chip">{{ plan.lessonsCount }} Lessons</mat-chip>
+              <mat-chip class="shared-chip" *ngIf="plan.ownerName">Shared by {{ plan.ownerName }}</mat-chip>
+            </mat-chip-set>
+          </div>
+        </div>
+        <p class="plan-desc" *ngIf="plan.description">{{ plan.description }}</p>
+        <div class="card-footer">
+          <span class="plan-date">{{ plan.createdDate | date:'mediumDate' }}</span>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,19 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="logo">
+      <mat-icon>school</mat-icon>
+    </div>
+    <h1>LessonsHub</h1>
+    <p class="tagline">Your personal AI-powered learning platform</p>
+
+    @if (loading) {
+      <div class="loading">Signing in...</div>
+    }
+    
+    <div #googleBtn class="google-btn-container" [class.hidden]="loading"></div>
+
+    @if (error) {
+      <p class="error">{{ error }}</p>
+    }
+  </div>
+</div>

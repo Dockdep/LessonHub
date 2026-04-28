@@ -1,0 +1,17 @@
+{% if use_native_language %}Write the lesson plan in {{ native_language or "the user's native language" }}. The student is studying **{{ language_to_learn or "a target language" }}**, but explanations and lesson titles must be in {{ native_language or "their native language" }}.{% else %}Write the lesson plan in **{{ language_to_learn or "the target language" }}** (immersive mode). The student wants to be exposed to {{ language_to_learn or "the target language" }} from the start.{% endif %}
+
+Topic: {{ topic }}
+Native language: {{ native_language or "(not provided)" }}
+Language being studied: {{ language_to_learn or "(not provided)" }}
+{% if number_of_lessons %}
+Required Lessons: {{ number_of_lessons }}
+{% endif %}
+Additional Context/User Level: {{ description }}
+
+Instructions:
+1. **Determine Baseline**: Based on the context, identify the learner's starting point in {{ language_to_learn or "the target language" }}.
+2. **Curate Skeleton**: {% if number_of_lessons %}Map out exactly {{ number_of_lessons }} milestones.{% else %}Create as many lessons as you think are appropriate to fully cover this topic.{% endif %}
+3. **Logical Sequencing**: Focus on 'Structure -> Usage -> Conversational Context'.
+
+Each lesson description must explain the 'Value'—why this lesson is necessary at this stage of learning {{ language_to_learn or "the target language" }}.
+{% include "_document_context.jinja2" %}

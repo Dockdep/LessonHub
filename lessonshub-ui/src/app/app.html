@@ -1,0 +1,84 @@
+@if (!auth.isLoggedIn()) {
+  <router-outlet></router-outlet>
+} @else {
+<div class="app-layout">
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar">
+    <div class="brand">
+      <div class="logo-icon">
+        <mat-icon>school</mat-icon>
+      </div>
+      <span class="brand-name">LessonsHub</span>
+    </div>
+
+    <div class="nav-links">
+      <a routerLink="/today" routerLinkActive="active" class="nav-item">
+        <mat-icon>dashboard</mat-icon>
+        <span>Today</span>
+      </a>
+      <a routerLink="/lesson-plan" routerLinkActive="active" class="nav-item">
+        <mat-icon>auto_awesome</mat-icon>
+        <span>AI Generator</span>
+      </a>
+      <a routerLink="/lesson-plans" routerLinkActive="active" class="nav-item">
+        <mat-icon>library_books</mat-icon>
+        <span>My Plans</span>
+      </a>
+      <a routerLink="/lesson-days" routerLinkActive="active" class="nav-item">
+        <mat-icon>calendar_month</mat-icon>
+        <span>Scheduler</span>
+      </a>
+      <a routerLink="/documents" routerLinkActive="active" class="nav-item">
+        <mat-icon>menu_book</mat-icon>
+        <span>Documents</span>
+      </a>
+      <a routerLink="/profile" routerLinkActive="active" class="nav-item">
+        <mat-icon>person</mat-icon>
+        <span>Profile</span>
+      </a>
+    </div>
+
+    @if (auth.currentUser(); as user) {
+      <div class="user-profile">
+        @if (user.pictureUrl) {
+          <img [src]="user.pictureUrl" class="avatar-img" alt="avatar" referrerpolicy="no-referrer">
+        } @else {
+          <div class="avatar">{{ user.name.charAt(0).toUpperCase() }}</div>
+        }
+        <div class="user-info">
+          <span class="name">{{ user.name }}</span>
+          <button class="logout-link" (click)="auth.logout()">Sign out</button>
+        </div>
+      </div>
+    }
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header class="top-header">
+      <div class="breadcrumbs">
+        <!-- Breadcrumbs could go here -->
+      </div>
+      <div class="actions">
+        <button mat-icon-button><mat-icon>notifications</mat-icon></button>
+        <button mat-icon-button><mat-icon>settings</mat-icon></button>
+      </div>
+    </header>
+
+    <div class="content-wrapper">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+
+  <!-- Global Toast -->
+  <div class="toast-container" *ngIf="notifications.notification() as n">
+    <div class="toast" [class.toast-success]="n.type === 'success'" [class.toast-error]="n.type === 'error'">
+      <mat-icon>{{ n.type === 'success' ? 'check_circle' : 'error' }}</mat-icon>
+      <span>{{ n.message }}</span>
+      <button class="toast-close" (click)="notifications.clear()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>
+}

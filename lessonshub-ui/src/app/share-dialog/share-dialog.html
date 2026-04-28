@@ -1,0 +1,52 @@
+<div class="share-dialog">
+  <h2 mat-dialog-title>
+    <mat-icon>group_add</mat-icon>
+    Share "{{ data.planName }}"
+  </h2>
+
+  <mat-dialog-content>
+    <p class="hint">Anyone you share this plan with can view all lessons and content. They'll generate their own exercises and answers using their own Google API key.</p>
+
+    <form (ngSubmit)="add()" class="add-form">
+      <mat-form-field appearance="outline" class="email-input">
+        <mat-label>Email</mat-label>
+        <input matInput type="email" [(ngModel)]="email" name="email" autocomplete="off" placeholder="user@example.com" [disabled]="adding()" />
+      </mat-form-field>
+      <button mat-raised-button color="primary" type="submit" [disabled]="adding() || !email.trim()">
+        <mat-spinner diameter="18" *ngIf="adding()"></mat-spinner>
+        <span *ngIf="!adding()">Share</span>
+      </button>
+    </form>
+
+    <p class="error-message" *ngIf="errorMessage()">{{ errorMessage() }}</p>
+
+    <div class="shares-section">
+      <h3>People with access</h3>
+
+      <div class="loading" *ngIf="loading()">
+        <mat-spinner diameter="24"></mat-spinner>
+      </div>
+
+      <div class="shares-list" *ngIf="!loading()">
+        <div class="empty" *ngIf="shares().length === 0">
+          Not shared with anyone yet.
+        </div>
+
+        <div class="share-row" *ngFor="let share of shares()">
+          <div class="share-info">
+            <div class="share-name">{{ share.name }}</div>
+            <div class="share-email">{{ share.email }}</div>
+          </div>
+          <button mat-icon-button color="warn" (click)="remove(share)" [disabled]="removingUserId() === share.userId" aria-label="Remove access">
+            <mat-spinner diameter="18" *ngIf="removingUserId() === share.userId"></mat-spinner>
+            <mat-icon *ngIf="removingUserId() !== share.userId">delete_outline</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="close()">Done</button>
+  </mat-dialog-actions>
+</div>

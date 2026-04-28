@@ -1,0 +1,20 @@
+{% if language %}Write all content in {{ language }}.{% endif %}
+Find the most relevant books, official documentation, and learning resources for the following lesson:
+
+Topic: {{ topic }}
+Lesson Name: {{ lesson_name }}
+Lesson Topic: {{ lesson_topic }}
+Lesson Description: {{ lesson_description }}
+
+Resource Focus: Focus on official documentation (MSDN, MDN, etc.), RFCs, and industry-standard technical textbooks.
+
+Search for resources that:
+1. Are authoritative sources (textbooks, official docs, reputable publishers)
+2. Cover the specific concepts in this lesson
+3. Are suitable for the learning level
+
+Provide exactly:
+- {{ books_limit }} book(s) with author, book name, chapter number and chapter name
+- {{ documentation_limit }} documentation resource(s) with official documentation URL
+
+For each resource, explain why it's relevant to the lesson.

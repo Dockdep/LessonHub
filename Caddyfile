@@ -1,0 +1,18 @@
+# Caddy reverse-proxy in front of LessonsHub.
+# Routes:
+#   /api/*       → .NET API (LessonsHub container, port 8080)
+#   everything else → Angular SSR (lessonshub-ui container, port 4000)
+#
+# Browser sees a single origin (http://localhost) so no CORS,
+# and Angular's relative `/api/*` URLs continue to work as-is.
+:80 {
+    handle /api/* {
+        reverse_proxy lessonshub:8080
+    }
+    handle /swagger* {
+        reverse_proxy lessonshub:8080
+    }
+    handle {
+        reverse_proxy lessonshub-ui:4000
+    }
+}

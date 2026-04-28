@@ -1,0 +1,77 @@
+<div class="dashboard-container fade-in">
+  <!-- Header Section -->
+  <header class="page-header">
+    <h1 class="greeting">{{ greeting() }}</h1>
+    <p class="current-date">{{ today | date:'fullDate' }}</p>
+  </header>
+
+  <!-- Loading State -->
+  <div class="loading-state" *ngIf="isLoading()">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    <p>Loading your schedule...</p>
+  </div>
+
+  <!-- Content: Lesson Schedule -->
+  <div class="schedule-grid" *ngIf="lessonDay() && !isLoading()">
+    <!-- Summary Card -->
+    <mat-card class="summary-card">
+      <mat-card-header>
+        <mat-card-title>Overview</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-row">
+          <div class="stat-group">
+            <span class="label">Plan</span>
+            <span class="value">{{ lessonDay()!.name }}</span>
+          </div>
+          <div class="stat-group">
+            <span class="label">Tasks</span>
+            <span class="value">{{ lessonDay()!.lessons.length }}</span>
+          </div>
+        </div>
+        <p class="description">{{ lessonDay()!.shortDescription }}</p>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Lesson List -->
+    <div class="lesson-list-container">
+      <div class="list-header">
+        <h2>Your Tasks</h2>
+        <button mat-button color="primary" routerLink="/lesson-days">Manage Schedule</button>
+      </div>
+
+      <div class="lesson-cards">
+        <div
+          class="lesson-strip"
+          *ngFor="let lesson of lessonDay()!.lessons"
+          [routerLink]="['/lesson', lesson.id]">
+
+          <div class="lesson-badge">
+            <span class="number">{{ lesson.lessonNumber }}</span>
+          </div>
+
+          <div class="lesson-details">
+            <h3 class="lesson-title">{{ lesson.name }}</h3>
+            <span class="lesson-context">{{ lesson.lessonPlanName }}</span>
+          </div>
+
+          <div class="lesson-action">
+            <mat-icon>chevron_right</mat-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!lessonDay() && !isLoading()">
+    <div class="empty-illustration">
+      <mat-icon>event_note</mat-icon>
+    </div>
+    <h2>Free Day!</h2>
+    <p>You don't have any lessons scheduled for today.</p>
+    <button mat-raised-button color="primary" routerLink="/lesson-days" class="cta-button">
+      Schedule Lessons
+    </button>
+  </div>
+</div>

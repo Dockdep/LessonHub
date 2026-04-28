@@ -1,0 +1,222 @@
+<div class="lesson-viewer fade-in">
+  <!-- Top Nav -->
+  <div class="nav-back" *ngIf="lesson()">
+    <a mat-button [routerLink]="['/lesson-plans', lesson()!.lessonPlanId]">
+      <mat-icon>arrow_back</mat-icon> Back to Lesson Plan
+    </a>
+  </div>
+
+  <div class="loading-overlay" *ngIf="isLoading()">
+    <mat-spinner diameter="40"></mat-spinner>
+  </div>
+
+  <div class="error-banner" *ngIf="error()">
+    <mat-icon>error</mat-icon> {{ error() }}
+  </div>
+
+  <div class="detail-layout" *ngIf="lesson() && !isLoading()">
+    <!-- Main Content Column -->
+    <article class="content-column">
+      <!-- View Mode Header -->
+      <header class="lesson-hero" *ngIf="!isEditingInfo()">
+        <div class="hero-top-row">
+          <div class="hero-badge">Lesson {{ lesson()!.lessonNumber }}</div>
+          <span class="completed-badge" *ngIf="lesson()!.isCompleted">
+            <mat-icon>check_circle</mat-icon> Completed
+          </span>
+          <span class="shared-by-tag" *ngIf="!lesson()!.isOwner">
+            <mat-icon>group</mat-icon> Shared by {{ lesson()!.ownerName || 'another user' }}
+          </span>
+          <div class="hero-actions" *ngIf="lesson()!.isOwner">
+            <button mat-stroked-button class="edit-info-btn" (click)="startEditingInfo()">
+              <mat-icon>edit</mat-icon> Edit
+            </button>
+            <button mat-stroked-button class="regenerate-btn" (click)="confirmRegenerate()" [disabled]="isRegenerating()">
+              <mat-spinner diameter="16" *ngIf="isRegenerating()"></mat-spinner>
+              <mat-icon *ngIf="!isRegenerating()">refresh</mat-icon>
+              <span>{{ isRegenerating() ? 'Regenerating...' : 'Regenerate' }}</span>
+            </button>
+          </div>
+        </div>
+        <h1 class="lesson-heading">{{ lesson()!.name }}</h1>
+        <span class="lesson-topic" *ngIf="lesson()!.lessonTopic">{{ lesson()!.lessonTopic }}</span>
+        <p class="lesson-lead">{{ lesson()!.shortDescription }}</p>
+        <div class="key-points-list" *ngIf="lesson()!.keyPoints && lesson()!.keyPoints.length > 0">
+          <span class="key-points-label">Key Points</span>
+          <mat-chip-set>
+            <mat-chip *ngFor="let kp of lesson()!.keyPoints">{{ kp }}</mat-chip>
+          </mat-chip-set>
+        </div>
+      </header>
+
+      <!-- Edit Mode Header -->
+      <header class="lesson-hero edit-hero" *ngIf="isEditingInfo()">
+        <div class="hero-top-row">
+          <div class="hero-badge">Lesson {{ lesson()!.lessonNumber }}</div>
+          <div class="hero-actions">
+            <button mat-button (click)="cancelEditingInfo()">Cancel</button>
+            <button mat-raised-button color="primary" (click)="saveInfo()" [disabled]="isSavingInfo()">
+              <mat-spinner diameter="16" *ngIf="isSavingInfo()"></mat-spinner>
+              <span *ngIf="!isSavingInfo()">Save</span>
+            </button>
+          </div>
+        </div>
+
+        <form [formGroup]="editForm" class="edit-info-fields">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Lesson Name</mat-label>
+            <input matInput formControlName="name">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Topic</mat-label>
+            <input matInput formControlName="lessonTopic">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Description</mat-label>
+            <textarea matInput formControlName="shortDescription" rows="2"></textarea>
+          </mat-form-field>
+
+          <div class="key-points-edit">
+            <span class="key-points-label">Key Points</span>
+            <div class="key-point-chips">
+              <mat-chip-set>
+                <mat-chip *ngFor="let kp of editKeyPoints; let i = index" (removed)="removeKeyPoint(i)" [removable]="true">
+                  {{ kp }}
+                  <mat-icon matChipRemove>cancel</mat-icon>
+                </mat-chip>
+              </mat-chip-set>
+            </div>
+            <div class="add-key-point-row">
+              <mat-form-field appearance="outline" class="kp-input">
+                <mat-label>Add key point</mat-label>
+                <input matInput [formControl]="newKeyPoint" (keyup.enter)="addKeyPoint()">
+              </mat-form-field>
+              <button mat-icon-button color="primary" (click)="addKeyPoint()" [disabled]="!newKeyPoint.value?.trim()">
+                <mat-icon>add_circle</mat-icon>
+              </button>
+            </div>
+          </div>
+        </form>
+      </header>
+
+      <div class="markdown-paper" *ngIf="lesson()!.content">
+        <markdown [data]="lesson()!.content"></markdown>
+      </div>
+
+      <!-- Practice Section -->
+      <section class="practice-section">
+        <mat-card class="exercises-card">
+          <mat-card-header>
+            <div class="header-flex">
+              <mat-card-title>Practice</mat-card-title>
+              <mat-icon class="icon-faint">fitness_center</mat-icon>
+            </div>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="generate-btn-row">
+              <button mat-raised-button color="primary" (click)="openGenerateDialog()" [disabled]="isGeneratingExercise()">
+                <mat-icon *ngIf="!isGeneratingExercise()">auto_awesome</mat-icon>
+                <mat-spinner diameter="20" *ngIf="isGeneratingExercise()" class="spinner-white"></mat-spinner>
+                <span>Generate Task</span>
+              </button>
+            </div>
+
+            <div class="exercises-list">
+              <mat-accordion multi>
+                <mat-expansion-panel *ngFor="let exercise of lesson()!.exercises; let i = index" class="exercise-panel">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>
+                      Exercise {{ i + 1 }}
+                      <span class="attempts-badge" *ngIf="exercise.answers && exercise.answers.length > 0">
+                        {{ exercise.answers.length }} attempt{{ exercise.answers.length > 1 ? 's' : '' }}
+                      </span>
+                    </mat-panel-title>
+                    <mat-panel-description>{{ exercise.difficulty }}</mat-panel-description>
+                  </mat-expansion-panel-header>
+
+                  <div class="panel-body">
+                    <div class="exercise-prompt">
+                      <markdown [data]="exercise.exerciseText"></markdown>
+                    </div>
+
+                    <!-- Previous Attempts -->
+                    <div class="feedback-history" *ngIf="exercise.answers && exercise.answers.length > 0">
+                      <div class="history-header">
+                        <span class="history-label">Previous Attempts</span>
+                      </div>
+                      <div class="attempt-card" *ngFor="let answer of exercise.answers">
+                        <div class="attempt-meta">
+                          <span class="score-badge"
+                            [class.high]="answer.accuracyLevel != null && answer.accuracyLevel >= 80"
+                            [class.med]="answer.accuracyLevel != null && answer.accuracyLevel >= 50 && answer.accuracyLevel < 80"
+                            [class.low]="answer.accuracyLevel != null && answer.accuracyLevel < 50"
+                            *ngIf="answer.accuracyLevel != null">
+                            {{ answer.accuracyLevel }}%
+                          </span>
+                        </div>
+                        <p class="user-response">"{{ answer.userResponse }}"</p>
+                        <div class="ai-review" *ngIf="answer.reviewText">
+                          <markdown [data]="answer.reviewText"></markdown>
+                        </div>
+                        <div>
+                            <button mat-stroked-button class="retry-btn"
+                              (click)="openGenerateDialog(exercise.answers[exercise.answers.length - 1].reviewText)"
+                              [disabled]="isGeneratingExercise()"
+                              *ngIf="exercise.answers[exercise.answers.length - 1].reviewText">
+                              <mat-icon>replay</mat-icon>
+                              Generate Task Based on Review
+                            </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Submit New Answer -->
+                    <div class="answer-section">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Your Response</mat-label>
+                        <textarea matInput [formControl]="getAnswerControl(exercise.id)" rows="3" placeholder="Type your solution..."></textarea>
+                      </mat-form-field>
+
+                      <button mat-flat-button color="accent" class="submit-btn"
+                        (click)="submitAnswer(exercise)"
+                        [disabled]="submittingExerciseId() === exercise.id || !getAnswerControl(exercise.id).value.trim()">
+                        <mat-spinner diameter="18" *ngIf="submittingExerciseId() === exercise.id"></mat-spinner>
+                        <span *ngIf="submittingExerciseId() !== exercise.id">Submit for Review</span>
+                      </button>
+                    </div>
+                  </div>
+                </mat-expansion-panel>
+              </mat-accordion>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </section>
+
+      <!-- Complete Lesson (owner-only) -->
+      <div class="complete-section" *ngIf="lesson()!.isOwner">
+        <button mat-raised-button
+          [class]="lesson()!.isCompleted ? 'complete-btn completed' : 'complete-btn'"
+          (click)="toggleComplete()"
+          [disabled]="isTogglingComplete()">
+          <mat-icon>{{ lesson()!.isCompleted ? 'check_circle' : 'check_circle_outline' }}</mat-icon>
+          {{ lesson()!.isCompleted ? 'Completed' : 'Mark as Complete' }}
+        </button>
+      </div>
+
+      <!-- Navigation -->
+      <div class="lesson-nav">
+        <a mat-stroked-button class="nav-btn prev-btn" *ngIf="prevLessonId()" [routerLink]="['/lesson', prevLessonId()]">
+          <mat-icon>arrow_back</mat-icon>
+          Previous Lesson
+        </a>
+        <a mat-raised-button class="nav-btn next-btn" *ngIf="nextLessonId()" [routerLink]="['/lesson', nextLessonId()]">
+          Next Lesson
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
+      </div>
+    </article>
+  </div>
+</div>

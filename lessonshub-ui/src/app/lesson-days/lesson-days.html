@@ -1,0 +1,108 @@
+<div class="calendar-container fade-in">
+  <div class="calendar-layout">
+
+    <!-- Sidebar: Assignment Form -->
+    <aside class="assign-panel">
+      <mat-card class="assign-card">
+        <mat-card-header>
+          <mat-card-title>Assign Task</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <form [formGroup]="form" class="input-stack">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Select Course</mat-label>
+              <mat-select formControlName="selectedPlan" (selectionChange)="onLessonPlanChange()">
+                <mat-option *ngFor="let plan of lessonPlans()" [value]="plan.id">{{ plan.name }}</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width" *ngIf="form.value.selectedPlan">
+              <mat-label>Select Lesson</mat-label>
+              <mat-select formControlName="selectedLesson">
+                <mat-option *ngFor="let lesson of availableLessons()" [value]="lesson" [disabled]="lesson.isAssigned">
+                  {{ lesson.name }} {{ lesson.isAssigned ? '(Assigned)' : '' }}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Scheduled Date</mat-label>
+              <input matInput [matDatepicker]="picker" formControlName="selectedDate" (dateChange)="onDateChange($event.value)">
+              <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+              <mat-datepicker #picker></mat-datepicker>
+            </mat-form-field>
+
+            <!-- Optional Fields -->
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Custom Title (Optional)</mat-label>
+              <input matInput formControlName="dayName" placeholder="e.g. Focus Session">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Notes (Optional)</mat-label>
+              <textarea matInput formControlName="dayDescription" rows="2"></textarea>
+            </mat-form-field>
+          </form>
+
+          <!-- Messages handled by global toast -->
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-button (click)="resetForm()">Reset</button>
+          <button mat-flat-button color="primary" class="full-width-btn" (click)="assignLesson()" [disabled]="!form.value.selectedLesson || isAssigning()">
+            Assign to Schedule
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </aside>
+
+    <!-- Main: Calendar View -->
+    <main class="calendar-view">
+      <div class="month-controls">
+        <h2 class="section-title">Schedule Overview</h2>
+        <div class="nav-pill">
+          <button mat-icon-button (click)="previousMonth()"><mat-icon>chevron_left</mat-icon></button>
+          <span class="month-label">{{ currentMonthName }}</span>
+          <button mat-icon-button (click)="nextMonth()"><mat-icon>chevron_right</mat-icon></button>
+        </div>
+      </div>
+
+      <div class="days-list">
+        <div class="empty-calendar" *ngIf="lessonDays().length === 0">
+          <mat-icon>calendar_today</mat-icon>
+          <p>No lessons assigned for {{ currentMonthName }}</p>
+        </div>
+
+        <mat-card class="day-card" *ngFor="let day of lessonDays()">
+          <div class="day-spine">
+             <div class="date-box">
+               <span class="day-number">{{ day.date | date:'d' }}</span>
+               <span class="day-text">{{ day.date | date:'EEE' }}</span>
+             </div>
+          </div>
+
+          <div class="day-body">
+            <div class="day-header">
+              <h3 class="day-title">{{ day.name }}</h3>
+              <span class="day-desc" *ngIf="day.shortDescription">{{ day.shortDescription }}</span>
+            </div>
+
+            <div class="assigned-lessons">
+              <div class="lesson-chip" *ngFor="let lesson of day.lessons">
+                <a class="chip-content" [routerLink]="['/lesson', lesson.id]">
+                  <span class="chip-num">#{{ lesson.lessonNumber }}</span>
+                  <div class="chip-text">
+                    <span class="chip-name">{{ lesson.name }}</span>
+                    <span class="chip-plan">{{ lesson.lessonPlanName }}</span>
+                  </div>
+                </a>
+                <button mat-icon-button class="remove-btn" (click)="unassignLesson(lesson.id)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </mat-card>
+      </div>
+    </main>
+  </div>
+</div>

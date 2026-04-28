@@ -1,0 +1,57 @@
+# Local-dev orchestration template.
+# Copy to docker-compose.yml (which is gitignored) and adjust values for
+# your machine before running `docker compose up`.
+#
+# Production deploy is handled by .github/workflows/deploy.yml + Cloud Run —
+# this file is for local dev only.
+
+services:
+  lessons-ai-api:
+    build:
+      context: ./lessons-ai-api
+    container_name: lessons-ai-api
+    env_file:
+      - ./lessons-ai-api/.env
+    environment:
+      DATABASE_URL: "postgresql://postgres:<your-postgres-password>@host.docker.internal:5432/LessonsAi"
+    restart: unless-stopped
+
+  lessonshub:
+    build:
+      context: ./
+      dockerfile: LessonsHub/Dockerfile
+    container_name: lessonshub
+    environment:
+      ConnectionStrings__DefaultConnection: "Host=host.docker.internal;Port=5432;Database=LessonsHub;Username=postgres;Password=<your-postgres-password>"
+      LessonsAiApi__BaseUrl: "http://lessons-ai-api:8000"
+      # Local-dev secret read from .env at repo root (gitignored).
+      JwtSettings__SecretKey: "${JWT_SECRET_LOCAL:?must set JWT_SECRET_LOCAL in .env at repo root}"
+      # Client IDs are not secrets (they're sent to every browser visiting the page).
+      GoogleAuth__ClientId: "<your-dev-google-oauth-client-id>.apps.googleusercontent.com"
+    depends_on:
+      lessons-ai-api:
+        condition: service_started
+    restart: unless-stopped
+
+  lessonshub-ui:
+    build:
+      context: ./lessonshub-ui
+    container_name: lessonshub-ui
+    environment:
+      PORT: "4000"
+      # Angular 21 SSR has SSRF protection that rejects unknown Host headers.
+      # The SSR server is only reachable through the Caddy proxy, so accept any host.
+      NG_ALLOWED_HOSTS: "*"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: lessonshub-caddy
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - lessonshub
+      - lessonshub-ui
+    restart: unless-stopped

@@ -1,0 +1,45 @@
+h2[mat-dialog-title] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+mat-dialog-content {
+  min-width: 380px;
+}
+
+mat-dialog-content p {
+  margin: 0 0 1rem;
+  color: #475569;
+}
+
+.docs-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.docs-toggle input[type="checkbox"] {
+  margin-top: 3px;
+  cursor: pointer;
+}
+
+.docs-toggle-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  color: #0c4a6e;
+}
+
+.docs-toggle-text small {
+  color: #475569;
+  margin-top: 2px;
+}

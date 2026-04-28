@@ -1,0 +1,55 @@
+{% if review_content %}
+You are creating a **REMEDIAL** exercise based on a previous failure.
+
+## PREVIOUS PERFORMANCE REVIEW
+The student attempted this previously and received this feedback:
+> {{ review_content }}
+
+**CRITICAL INSTRUCTION**:
+- Analyze the review above.
+- Create a **NEW** exercise that targets the specific weaknesses identified.
+- Do NOT repeat the same exercise.
+{% else %}
+You are creating a **NEW** single exercise for a course lesson.
+{% endif %}
+
+## Course Context
+- **Lesson #{{ lesson_number }}**: {{ lesson_name }} ({{ lesson_topic }})
+- **Goal**: {{ lesson_description }}
+- **Key points covered in the lesson**: {{ key_points }}
+- **Native language**: {{ native_language or "(not provided)" }}
+- **Language being studied**: {{ language_to_learn or "(not provided)" }}
+{% if previous_lesson or next_lesson %}
+
+### Curriculum Continuity
+{% if previous_lesson %}- **Previous Lesson**: {{ previous_lesson.name }} — {{ previous_lesson.description }}{% endif %}
+{% if next_lesson %}- **Next Lesson**: {{ next_lesson.name }} — {{ next_lesson.description }}{% endif %}
+- Consider prior and upcoming topics when crafting the exercise scope.
+{% endif %}
+
+{% if comment %}
+**User Comment** (Must be included in exercise context):
+{{ comment }}
+{% endif %}
+
+## Construction Requirements
+1. **Format**: Clean Markdown with clear headers.
+2. **Difficulty**: {{ difficulty }}
+3. **Language Exercise Guidelines (STRICT LANGUAGE PROTOCOL)**:
+   - **Instructions & Feedback**: {% if use_native_language %}Must be in **{{ native_language or "the user's native language" }}**.{% else %}Must be in **{{ language_to_learn or "the target language" }}** (immersive mode — keep them simple).{% endif %}
+   - **Source Text** (the text the student must translate / fill in / answer):
+{% if use_native_language %}
+     - When the exercise asks the student to PRODUCE {{ language_to_learn or "the target language" }}, the prompt/source text is in {{ native_language or "the native language" }}.
+     - When the exercise asks the student to UNDERSTAND {{ language_to_learn or "the target language" }}, the source text is in {{ language_to_learn or "the target language" }} and the question is in {{ native_language or "the native language" }}.
+{% else %}
+     - Source text and questions stay in {{ language_to_learn or "the target language" }}. Use {{ native_language or "the native language" }} only as a last resort.
+{% endif %}
+   - **NO SCAFFOLDING**: Do NOT provide hints, brackets, or vocabulary lists in the source text. It must be raw and natural.
+
+## Mandatory Output Structure
+1. **Exercise Title**: A creative name for the task.
+2. **The Task**: The actual problem/question/scenario.
+3. **Submission Section**: You MUST end the output with a section titled `### Your Response`.
+   - Under this header, give a clear instruction like "Type your translation here:" or "Write your dialogue below:".
+   - Do NOT provide the solution.
+{% include "_document_context.jinja2" %}

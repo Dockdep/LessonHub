@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+
+project_id  = "your-gcp-project-id"
+region      = "us-central1"
+github_repo = "Vitaliy/LessonsHub"
+
+# Sensitive — keep terraform.tfvars out of git.
+google_oauth_client_id = "555730525772-xxxxx.apps.googleusercontent.com"
+context7_api_key       = "ctx7sk-..."
+
+# Optional override; default is the cheapest tier.
+# sql_tier = "db-g1-small"

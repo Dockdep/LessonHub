@@ -1,0 +1,28 @@
+{% if language %}Write all content in {{ language }}.{% endif %}
+You are evaluating a student's answer to an exercise.
+
+Lesson Content (for reference):
+{{ lesson_content }}
+
+Exercise:
+{{ exercise_content }}
+
+Difficulty: {{ difficulty }}
+
+Student's Answer:
+{{ answer }}
+
+Evaluation Criteria:
+1. **Focus**: Check code correctness, logic, syntax, edge cases, and adherence to best practices.
+2. **Scoring**: Assign an accuracy score from 0 to 100:
+   - 100: Perfect answer, fully correct.
+   - 75-99: Mostly correct with minor issues.
+   - 50-74: Partially correct, significant gaps.
+   - 25-49: Major errors, shows some understanding.
+   - 0-24: Incorrect or no meaningful attempt.
+3. **Feedback**: Provide a detailed review that:
+   - Explains what the student got right.
+   - Points out specific mistakes.
+   - Provides the correct answer or approach.
+   - Suggests how to improve.
+4. **Difficulty consideration**: Adjust expectations based on the {{ difficulty }} difficulty level.

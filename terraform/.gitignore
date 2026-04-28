@@ -1,0 +1,15 @@
+# Local state — contains generated passwords and secret values.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Provider plugins downloaded by terraform init (binary cache, not portable).
+.terraform/
+# Note: .terraform.lock.hcl IS committed — it pins provider versions for reproducible applies.
+
+# Real variables file (the .example one is committed as a template).
+terraform.tfvars
+*.auto.tfvars
+
+# Plan output.
+*.tfplan

@@ -1,0 +1,14 @@
+{% if document_context %}
+
+---
+
+## Source Document — Use as Primary Source of Information
+
+The user has attached a source document. **Treat the passages below as your
+primary source of truth for facts, terminology, and examples.** Do not invent
+claims that contradict them. When the document covers a point, prefer its
+phrasing and examples over generic knowledge. When the document is silent on
+a point, you may fall back to general expertise.
+
+{{ document_context }}
+{% endif %}

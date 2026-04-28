@@ -1,0 +1,161 @@
+# .NET / ASP.NET Core
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio cache/options
+.vs/
+.vscode/
+.claude/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Build results
+[Dd]ebugPublic/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Angular / Node
+node_modules/
+npm-debug.log
+yarn-error.log
+# Note: package-lock.json and yarn.lock SHOULD be committed for reproducible
+# builds (`npm ci` and Docker images depend on them).
+
+## Compiled output
+/dist
+/tmp
+/out-tsc
+/bazel-out
+ClientApp/dist/
+ClientApp/out-tsc/
+
+## Angular cache
+.angular/
+ClientApp/.angular/
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history/
+.ionide/
+
+# System files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Environment files
+*.env
+*.env.local
+*.env.development.local
+*.env.test.local
+*.env.production.local
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# User secrets (these are stored in user profile, but just in case)
+secrets.json
+**/secrets.json
+
+# Testing
+/coverage
+*.cover
+.hypothesis/
+.pytest_cache/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# Miscellaneous
+*.log
+*.pid
+*.seed
+*.pid.lock
+.sass-cache/
+/connect.lock
+/libpeerconnection.log
+testem.log
+/typings
+__screenshots__/
+
+# Publishing
+*.Publish.xml
+*.pubxml
+*.publishproj
+PublishScripts/
+
+# Database
+*.mdf
+*.ldf
+*.ndf
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Local-dev orchestration — kept out of git for peace of mind.
+# A sanitized template lives in docker-compose.example.yml.
+docker-compose.yml
+
+# Per-environment ASP.NET overrides — devs put their own local values here,
+# never committed. Production reads config from env / Secret Manager.
+appsettings.Development.json
+
+
+uploads
+
+# Wiki sync workspace (scripts/sync-wiki.py clones the wiki repo here)
+.wiki-sync/

@@ -1,0 +1,50 @@
+{% if review_content %}
+You are creating a **REMEDIAL** exercise based on a previous failure.
+
+## PREVIOUS PERFORMANCE REVIEW
+The student attempted this previously and received this feedback:
+> {{ review_content }}
+
+**CRITICAL INSTRUCTION**: 
+- Analyze the review above.
+- Create a **NEW** exercise that targets the specific weaknesses identified.
+- Do NOT repeat the same exercise.
+{% else %}
+You are creating a **NEW** single exercise for a course lesson.
+{% endif %}
+
+## Course Context
+- **Lesson #{{ lesson_number }}**: {{ lesson_name }} ({{ lesson_topic }})
+- **Goal**: {{ lesson_description }}
+- **Key points covered in the lesson**: {{ key_points }}
+{% if previous_lesson or next_lesson %}
+
+### Curriculum Continuity
+{% if previous_lesson %}- **Previous Lesson**: {{ previous_lesson.name }} — {{ previous_lesson.description }}{% endif %}
+{% if next_lesson %}- **Next Lesson**: {{ next_lesson.name }} — {{ next_lesson.description }}{% endif %}
+- Consider prior and upcoming topics when crafting the exercise scope.
+{% endif %}
+
+{% if comment %}
+**User Comment** (Must be included in exercise context):
+{{ comment }}
+{% endif %}
+
+## Construction Requirements
+1. **Format**: Clean Markdown with clear headers.
+2. **Difficulty**: {{ difficulty }}
+3. **Agent Strategy**: 
+**General Exercise Guidelines**:
+1. **Focus**: Critical thinking, application, and comprehension.
+2. **Structure**:
+   - Ask an open-ended question that requires synthesizing the lesson material.
+   - Ask the user to apply a concept to a new, hypothetical situation.
+   - Avoid simple "definition" questions; ask "how" or "why".
+
+## Mandatory Output Structure
+1. **Exercise Title**: A creative name for the task.
+2. **The Task**: The actual problem/question/scenario.
+3. **Submission Section**: You MUST end the output with a section titled `### Your Response`.
+   - Under this header, give a clear instruction like "Write your code below:" or "Type your translation here:".
+   - Do NOT provide the solution.
+{% include "_document_context.jinja2" %}

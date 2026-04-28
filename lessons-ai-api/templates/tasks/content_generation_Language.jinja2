@@ -1,0 +1,56 @@
+{% if use_native_language %}Write the lesson in {{ native_language or "the user's native language" }}. The student is studying **{{ language_to_learn or "a target language" }}**, but the explanatory prose, headings, and analysis must be in {{ native_language or "their native language" }}. Example dialogues and vocabulary tables stay in {{ language_to_learn or "the target language" }} (with translations into {{ native_language or "their native language" }}).{% else %}Write the entire lesson in **{{ language_to_learn or "the target language" }}** (immersive mode). Use simple, accessible {{ language_to_learn or "the target language" }}; only fall back to {{ native_language or "the native language" }} when a concept genuinely cannot be expressed at the student's current level.{% endif %}
+
+You are an Expert Linguist and Native-Level Instructor. Your goal is to write a rich, immersive language lesson.
+
+Course Context:
+- Topic: {{ topic }}
+- Overview: {{ plan_description }}
+- Native language: {{ native_language or "(not provided)" }}
+- Language being studied: {{ language_to_learn or "(not provided)" }}
+
+Current Lesson:
+- #{{ lesson_number }}: {{ lesson_name }} ({{ lesson_topic }})
+- Goal: {{ lesson_description }}
+- **Specific Key Points to Cover**: {{ key_points }}
+{% if previous_lesson or next_lesson %}
+
+Curriculum Continuity:
+{% if previous_lesson %}- **Previous Lesson**: {{ previous_lesson.name }} — {{ previous_lesson.description }}{% endif %}
+{% if next_lesson %}- **Next Lesson**: {{ next_lesson.name }} — {{ next_lesson.description }}{% endif %}
+- Use this context to build on prior knowledge and foreshadow upcoming topics where natural.
+{% endif %}
+
+Requirements:
+1. **Format**: Clean Markdown. Use tables for vocabulary/conjugation.
+2. **Tone**: Encouraging, culturally aware, and detailed.
+3. **Volume**: **Extensive.** Short explanations are forbidden. Context is everything.
+
+Deep Dive Instructions (Language):
+- **Context over Rules**: Grammar rules are useless without context. Always explain *when* and *with whom* to use specific phrases.
+- **Realistic Dialogue**: You must generate full conversation scripts to demonstrate usage in {{ language_to_learn or "the target language" }}.
+- **Nuance**: Explicitly explain the difference between formal (polite) and informal (casual) usage.
+
+Structure:
+1. **Introduction**:
+   - Introduce the topic.
+   - **Cultural Note**: Explain the cultural significance or social context of this lesson (e.g., politeness levels, regional slang) in the {{ language_to_learn or "target-language" }} speaking world.
+
+2. **Core Concepts (Grammar & Vocabulary)**:
+   - Detailed explanation of the Key Points.
+   - **Comparative Logic**: {% if native_language %}Compare {{ language_to_learn or "the target language" }}'s logic to {{ native_language }} to highlight differences.{% else %}Compare the target language's logic to the user's native language where it helps clarify.{% endif %}
+   - **Usage Rules**: Clear guidelines on sentence structure and variations.
+
+3. **Scenarios & Dialogues**:
+   - **Scenario A (Formal/Business)**: A full dialogue (6-10 lines) in {{ language_to_learn or "the target language" }} demonstrating the concept in a professional setting.
+   - **Scenario B (Casual/Social)**: A full dialogue (6-10 lines) in {{ language_to_learn or "the target language" }} demonstrating the concept in a relaxed setting.
+   - **Analysis**: Break down 3-4 specific phrases from the dialogues and explain why they were chosen.
+
+4. **Common Pitfalls**:
+   - False friends, pronunciation errors, or grammatical traps that {% if native_language %}{{ native_language }}-speaking{% endif %} learners often fall into.
+
+5. **Summary**: concise recap of the critical takeaways.
+
+Constraints:
+- No exercises.
+- Ensure every Key Point is illustrated within the Dialogues.
+{% include "_document_context.jinja2" %}

@@ -1,0 +1,28 @@
+# Build artefacts (regenerated inside the image)
+dist/
+.angular/
+out-tsc/
+
+# Local toolchain
+node_modules/
+npm-debug.log*
+
+# IDE / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Source-control noise (image build doesn't need git history)
+.git/
+.gitignore
+
+# Tests + dev-only configs that don't ship in production
+**/*.spec.ts
+karma.conf.*
+coverage/
+
+# Editor + lock chatter
+.eslintcache
+.nyc_output/
+*.log

@@ -1,0 +1,114 @@
+<div class="documents-page">
+  <header class="page-header">
+    <div>
+      <h1>Documents</h1>
+      <p class="subtitle">Upload books, articles, or notes — we'll embed them so you can generate lessons grounded in their content.</p>
+    </div>
+    <div class="header-actions">
+      <button mat-raised-button color="primary" (click)="pickFile()" [disabled]="!!uploading()">
+        <mat-icon>upload_file</mat-icon>
+        Upload document
+      </button>
+      <input #fileInput type="file"
+             accept=".md,.markdown,.txt,.pdf,.docx,.epub,.mobi,.azw,.azw3,text/markdown,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/epub+zip"
+             (change)="onFileSelected($event)" hidden>
+    </div>
+  </header>
+
+  @if (uploading(); as up) {
+    <div class="upload-banner">
+      <mat-icon>cloud_upload</mat-icon>
+      <div class="upload-info">
+        <span class="file-name">{{ up.name }}</span>
+        @if (up.progress < 100) {
+          <mat-progress-bar mode="determinate" [value]="up.progress"></mat-progress-bar>
+          <span class="progress-text">Uploading… {{ up.progress }}%</span>
+        } @else {
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+          <span class="progress-text">Embedding chunks (this can take a minute)…</span>
+        }
+      </div>
+    </div>
+  }
+
+  @if (error()) {
+    <div class="error-banner">
+      <mat-icon>error</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (isLoading()) {
+    <div class="loading">Loading…</div>
+  } @else if (documents().length === 0 && !uploading()) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">menu_book</mat-icon>
+      <h2>No documents yet</h2>
+      <p>Upload markdown, text, PDF, DOCX, EPUB, or MOBI/AZW. Files up to 32 MB.</p>
+    </div>
+  } @else {
+    <div class="docs-grid">
+      @for (doc of documents(); track doc.id) {
+        <mat-card class="doc-card" [class.failed]="doc.ingestionStatus === 'Failed'">
+          <mat-card-header>
+            <mat-icon mat-card-avatar
+                      class="status-icon"
+                      [class.ingested]="doc.ingestionStatus === 'Ingested'"
+                      [class.pending]="doc.ingestionStatus === 'Pending'"
+                      [class.failed-icon]="doc.ingestionStatus === 'Failed'">
+              {{ statusIcon(doc.ingestionStatus) }}
+            </mat-icon>
+            <mat-card-title>{{ doc.name }}</mat-card-title>
+            <mat-card-subtitle>
+              {{ formatSize(doc.sizeBytes) }} · {{ doc.contentType }}
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="meta-row">
+              <span class="meta-label">Status:</span>
+              <span class="status-pill"
+                    [class.ingested]="doc.ingestionStatus === 'Ingested'"
+                    [class.pending]="doc.ingestionStatus === 'Pending'"
+                    [class.failed-pill]="doc.ingestionStatus === 'Failed'">
+                {{ doc.ingestionStatus }}
+                @if (doc.ingestionStatus === 'Ingested' && doc.chunkCount !== null) {
+                  · {{ doc.chunkCount }} chunks
+                }
+              </span>
+            </div>
+
+            @if (doc.ingestionStatus === 'Failed' && doc.ingestionError) {
+              <div class="error-detail" [matTooltip]="doc.ingestionError">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ doc.ingestionError }}</span>
+              </div>
+            }
+
+            <div class="meta-row date-row">
+              <span class="meta-label">Uploaded:</span>
+              <span>{{ doc.createdAt | date:'medium' }}</span>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            @if (doc.ingestionStatus === 'Ingested') {
+              <a mat-button color="primary"
+                 [routerLink]="['/lesson-plan']"
+                 [queryParams]="{ documentId: doc.id }"
+                 matTooltip="Generate a lesson plan from this book">
+                <mat-icon>auto_awesome</mat-icon>
+                Generate plan
+              </a>
+            }
+            <button mat-icon-button color="warn"
+                    (click)="delete(doc)"
+                    matTooltip="Delete document">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      }
+    </div>
+  }
+</div>

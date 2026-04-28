@@ -1,0 +1,154 @@
+{
+  "info": {
+    "name": "LessonsHub AI API",
+    "description": "API collection for testing LessonsHub AI endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Generate Lesson Plan",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonType\": \"Technical\",\n  \"planName\": \"Python Basics\",\n  \"topic\": \"Python Programming\",\n  \"numberOfLessons\": 5,\n  \"description\": \"Beginner-friendly course covering Python fundamentals\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/lesson-plan/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "lesson-plan", "generate"]
+        }
+      }
+    },
+    {
+      "name": "Generate Lesson Content",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"planName\": \"Python Basics\",\n  \"topic\": \"Python Programming\",\n  \"lessonType\": \"Technical\",\n  \"lessonTopic\": \"Python setup and basics\",\n  \"keyPoints\": [\"Install Python 3.12\", \"Set up a virtual environment\", \"Write your first script\"],\n  \"planDescription\": \"Beginner-friendly course covering Python fundamentals\",\n  \"lessonNumber\": 1,\n  \"lessonName\": \"Introduction to Python\",\n  \"lessonDescription\": \"Learn what Python is and set up your development environment\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/lesson-content/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "lesson-content", "generate"]
+        }
+      }
+    },
+    {
+      "name": "Generate Lesson Exercise",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonType\": \"Technical\",\n  \"lessonTopic\": \"Python setup and basics\",\n  \"lessonNumber\": 1,\n  \"lessonName\": \"Introduction to Python\",\n  \"lessonDescription\": \"Learn what Python is and set up your development environment\",\n  \"keyPoints\": [\"Install Python 3.12\", \"Set up a virtual environment\", \"Write your first script\"],\n  \"difficulty\": \"easy\",\n  \"comment\": null,\n  \"nativeLanguage\": null\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/lesson-exercise/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "lesson-exercise", "generate"]
+        }
+      }
+    },
+    {
+      "name": "Retry Lesson Exercise",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonType\": \"Technical\",\n  \"lessonTopic\": \"Python setup and basics\",\n  \"lessonNumber\": 1,\n  \"lessonName\": \"Introduction to Python\",\n  \"lessonDescription\": \"Learn what Python is and set up your development environment\",\n  \"keyPoints\": [\"Install Python 3.12\", \"Set up a virtual environment\", \"Write your first script\"],\n  \"difficulty\": \"easy\",\n  \"review\": \"Score: 40/100. The student struggled with virtual environment setup and confused pip with conda.\",\n  \"comment\": null,\n  \"nativeLanguage\": null\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/lesson-exercise/retry",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "lesson-exercise", "retry"]
+        }
+      }
+    },
+    {
+      "name": "Check Exercise Review",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonType\": \"Technical\",\n  \"lessonContent\": \"## Introduction to Python\\n\\nPython is a high-level programming language...\\n\\n## Setting Up Your Environment\\n\\n1. Install Python 3.12\\n2. Create a virtual environment\\n3. Write your first script\",\n  \"exerciseContent\": \"## Exercise: Hello World\\n\\nWrite a Python script that prints 'Hello, World!' to the console.\\n\\n### Your Response\\nPaste your code below.\",\n  \"difficulty\": \"easy\",\n  \"answer\": \"print('Hello, World!')\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/exercise-review/check",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "exercise-review", "check"]
+        }
+      }
+    },
+    {
+      "name": "Generate Lesson Resources",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lessonType\": \"Technical\",\n  \"topic\": \"Python Programming\",\n  \"lessonName\": \"Introduction to Python\",\n  \"lessonTopic\": \"Python setup and basics\",\n  \"lessonDescription\": \"Learn what Python is and set up your development environment\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/lesson-resources/generate",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "lesson-resources", "generate"]
+        }
+      }
+    }
+  ]
+}

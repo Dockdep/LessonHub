@@ -1,0 +1,21 @@
+<h2 mat-dialog-title>
+  <mat-icon>refresh</mat-icon>
+  Regenerate Lesson
+</h2>
+
+<mat-dialog-content>
+  <p>This will replace the current lesson content with a new AI-generated version. This cannot be undone.</p>
+
+  <label class="docs-toggle" *ngIf="data.isTechnical">
+    <input type="checkbox" [(ngModel)]="bypassDocCache">
+    <span class="docs-toggle-text">
+      <strong>Use fresh documentation</strong>
+      <small>Skip the cached docs and re-fetch the latest from the framework site. Useful when a new version just released.</small>
+    </span>
+  </label>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancel</button>
+  <button mat-raised-button color="primary" (click)="confirm()">Regenerate</button>
+</mat-dialog-actions>

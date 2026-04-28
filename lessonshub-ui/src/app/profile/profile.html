@@ -1,0 +1,49 @@
+<div class="profile-page">
+  <header class="page-header">
+    <h1><mat-icon>person</mat-icon> Profile</h1>
+    <p class="subtitle">Manage your account and integrations.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="loading">Loading…</div>
+  } @else {
+    <section class="card">
+      <h2>Account</h2>
+      <div class="field-readonly">
+        <label>Name</label>
+        <div class="value">{{ name() }}</div>
+      </div>
+      <div class="field-readonly">
+        <label>Email</label>
+        <div class="value">{{ email() }}</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Google API Key</h2>
+      <p class="hint">Used by the AI service to generate lessons. Get one at
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
+      </p>
+      <div class="field">
+        <label for="apiKey">API Key</label>
+        <div class="input-row">
+          <input
+            id="apiKey"
+            [type]="showKey ? 'text' : 'password'"
+            [(ngModel)]="googleApiKey"
+            placeholder="AIza…"
+            autocomplete="off"
+            spellcheck="false" />
+          <button type="button" class="toggle-btn" (click)="showKey = !showKey" [attr.aria-label]="showKey ? 'Hide key' : 'Show key'">
+            <mat-icon>{{ showKey ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary-btn" (click)="save()" [disabled]="saving()">
+          {{ saving() ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
+    </section>
+  }
+</div>

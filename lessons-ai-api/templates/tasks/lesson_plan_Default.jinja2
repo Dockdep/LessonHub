@@ -1,0 +1,14 @@
+{% if language %}Write all content in {{ language }}.{% endif %}
+Topic: {{ topic }}
+{% if number_of_lessons %}
+Required Lessons: {{ number_of_lessons }}
+{% endif %}
+Additional Context/User Level: {{ description }}
+
+Instructions:
+1. **Determine Baseline**: Based on the context, identify the learner's starting point.
+2. **Curate Skeleton**: {% if number_of_lessons %}Map out exactly {{ number_of_lessons }} milestones.{% else %}Create as many lessons as you think are appropriate to fully cover this topic.{% endif %}
+3. **Logical Sequencing**: Focus on logical progression from basic to advanced concepts.
+
+Each lesson description must explain the 'Value'—why this lesson is necessary at this stage.
+{% include "_document_context.jinja2" %}
