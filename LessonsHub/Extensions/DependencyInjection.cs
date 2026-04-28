@@ -14,6 +14,10 @@ public static class DependencyInjection
     public static IServiceCollection AddCurrentUser(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
+        // Per-scope mutable holder. JobBackgroundService populates it from
+        // Job.UserId before resolving the executor; HTTP scopes leave it
+        // empty and CurrentUser falls through to the JWT claim.
+        services.AddScoped<UserContext>();
         services.AddScoped<ICurrentUser, CurrentUser>();
         return services;
     }
@@ -60,10 +64,6 @@ public static class DependencyInjection
         // fresh DI scope per job and resolves the registry from there.
         services.AddScoped<IJobExecutorRegistry, JobExecutorRegistry>();
         services.AddHostedService<JobBackgroundService>();
-
-        // TEMP — Phase-0 sanity test executor. Remove once we no longer need
-        // a no-AI round-trip path for diagnostics.
-        services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.EchoTestExecutor>();
 
         services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonPlanGenerateExecutor>();
         services.AddScoped<IJobExecutor, LessonsHub.Application.Services.Executors.LessonContentGenerateExecutor>();

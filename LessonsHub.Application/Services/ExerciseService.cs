@@ -197,6 +197,8 @@ public sealed class ExerciseService : IExerciseService
         if (!validation.IsSuccess)
             return new ServiceResult<ExerciseAnswerDto>(default, validation.Error, validation.Message);
 
+        // Validation above already rejected null/empty answer.
+        var nonNullAnswer = answer!;
         var userId = _currentUser.Id;
         var exercise = (await _exercises.GetForUserWithLessonAsync(exerciseId, userId, ct))!;
 
@@ -208,7 +210,7 @@ public sealed class ExerciseService : IExerciseService
                 LessonContent = exercise.Lesson.Content,
                 ExerciseContent = exercise.ExerciseText,
                 Difficulty = exercise.Difficulty,
-                Answer = answer,
+                Answer = nonNullAnswer,
                 Language = exercise.Lesson.LessonPlan?.NativeLanguage,
                 NativeLanguage = exercise.Lesson.LessonPlan?.NativeLanguage,
                 LanguageToLearn = exercise.Lesson.LessonPlan?.LanguageToLearn,
@@ -221,7 +223,7 @@ public sealed class ExerciseService : IExerciseService
 
             var answerEntity = new ExerciseAnswer
             {
-                UserResponse = answer,
+                UserResponse = nonNullAnswer,
                 SubmittedAt = DateTime.UtcNow,
                 AccuracyLevel = aiResponse.AccuracyLevel,
                 ReviewText = aiResponse.ExamReview,

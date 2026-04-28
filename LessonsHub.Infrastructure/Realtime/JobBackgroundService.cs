@@ -1,4 +1,5 @@
 using System.Text.Json;
+using LessonsHub.Application.Abstractions;
 using LessonsHub.Application.Abstractions.Repositories;
 using LessonsHub.Application.Abstractions.Services;
 using LessonsHub.Application.Mappers;
@@ -109,6 +110,12 @@ public sealed class JobBackgroundService : BackgroundService
         // Idempotency: if we re-enqueued during recovery and it's already done, skip.
         if (job.Status is JobStatus.Completed or JobStatus.Failed)
             return;
+
+        // Bind the acting user for this scope BEFORE the executor resolves
+        // any service that depends on ICurrentUser. Without this, services
+        // throw "No authenticated user" because there's no HttpContext here.
+        var userCtx = scope.ServiceProvider.GetRequiredService<UserContext>();
+        userCtx.UserId = job.UserId;
 
         job.Status = JobStatus.Running;
         job.StartedAt = DateTime.UtcNow;
