@@ -76,13 +76,13 @@ Each agent is told the limit in its prompt; CrewAI's structured output enforces 
 
 ```mermaid
 flowchart LR
-  classDef d fill:#e8f5e9
-  classDef t fill:#fff3e0
-  classDef l fill:#fce4ec
+  classDef d fill:#e8f5e9,color:#1a1a1a
+  classDef t fill:#fff3e0,color:#1a1a1a
+  classDef l fill:#fce4ec,color:#1a1a1a
 
-  default[resource_research_Default<br/>Agent: Expert Academic Researcher<br/>Bias: classic textbooks + top-rated digital]:::d
-  tech[resource_research_Technical<br/>Agent: Senior Technical Librarian<br/>Bias: official docs + RFCs + O'Reilly/Manning]:::t
-  lang[resource_research_Language<br/>Agent: Linguistic Resource Curator<br/>Bias: Cambridge "In Use" + corpora + drills]:::l
+  defAg["resource_research_Default<br/>Agent: Expert Academic Researcher<br/>Bias: classic textbooks + top-rated digital"]:::d
+  tech["resource_research_Technical<br/>Agent: Senior Technical Librarian<br/>Bias: official docs + RFCs + O'Reilly/Manning"]:::t
+  lang["resource_research_Language<br/>Agent: Linguistic Resource Curator<br/>Bias: Cambridge 'In Use' + corpora + drills"]:::l
 ```
 
 The agent personas are inline Python (see [resource_researcher_agent.py](../../lessons-ai-api/agents/resource_researcher_agent.py)) — three sets of `(role, goal, backstory)` selected by `agent_type`.

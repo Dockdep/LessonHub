@@ -14,6 +14,7 @@ public sealed class DocumentRepository : RepositoryBase, IDocumentRepository
 
     public Task<List<Document>> ListForUserAsync(int userId, CancellationToken ct = default) =>
         _db.Documents
+            .AsNoTracking()
             .Where(d => d.UserId == userId)
             .OrderByDescending(d => d.CreatedAt)
             .ToListAsync(ct);

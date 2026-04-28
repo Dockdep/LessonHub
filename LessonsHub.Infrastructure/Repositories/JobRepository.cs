@@ -13,23 +13,23 @@ public sealed class JobRepository : RepositoryBase, IJobRepository
         _db.Jobs.FirstOrDefaultAsync(j => j.Id == id, ct);
 
     public Task<Job?> GetForUserAsync(Guid id, int userId, CancellationToken ct = default) =>
-        _db.Jobs.FirstOrDefaultAsync(j => j.Id == id && j.UserId == userId, ct);
+        _db.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == id && j.UserId == userId, ct);
 
     public Task<Job?> FindByIdempotencyKeyAsync(int userId, string type, string idempotencyKey, CancellationToken ct = default) =>
-        _db.Jobs.FirstOrDefaultAsync(
+        _db.Jobs.AsNoTracking().FirstOrDefaultAsync(
             j => j.UserId == userId && j.Type == type && j.IdempotencyKey == idempotencyKey,
             ct);
 
     public Task<List<Job>> ListForUserAsync(int userId, JobStatus? status = null, CancellationToken ct = default)
     {
-        var q = _db.Jobs.Where(j => j.UserId == userId);
+        var q = _db.Jobs.AsNoTracking().Where(j => j.UserId == userId);
         if (status.HasValue) q = q.Where(j => j.Status == status.Value);
         return q.OrderByDescending(j => j.CreatedAt).ToListAsync(ct);
     }
 
     public Task<Job?> FindInFlightAsync(int userId, string type, string? relatedEntityType, int? relatedEntityId, CancellationToken ct = default)
     {
-        var q = _db.Jobs.Where(j =>
+        var q = _db.Jobs.AsNoTracking().Where(j =>
             j.UserId == userId
             && j.Type == type
             && (j.Status == JobStatus.Pending || j.Status == JobStatus.Running));
@@ -46,6 +46,7 @@ public sealed class JobRepository : RepositoryBase, IJobRepository
 
     public Task<List<Job>> ListInFlightForEntityAsync(int userId, string relatedEntityType, int relatedEntityId, CancellationToken ct = default) =>
         _db.Jobs
+            .AsNoTracking()
             .Where(j => j.UserId == userId
                         && j.RelatedEntityType == relatedEntityType
                         && j.RelatedEntityId == relatedEntityId

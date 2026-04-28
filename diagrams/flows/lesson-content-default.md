@@ -82,7 +82,7 @@ sequenceDiagram
     alt passed or last
       Crew-->>CS: LessonContentResponse { content }
     else
-      Note over Crew: append shortcomings to plan.description; retry
+      Note over Crew: append shortcomings to plan.description, retry
     end
   end
 ```
@@ -114,7 +114,7 @@ The `_document_context.jinja2` partial is included — but renders empty when `d
 
 ```mermaid
 flowchart LR
-  classDef l fill:#e3f2fd
+  classDef l fill:#e3f2fd,color:#1a1a1a
 
   prev[Lesson 4<br/>Lists & Tuples]:::l
   cur[Lesson 5<br/>Dictionaries]:::l
@@ -123,7 +123,7 @@ flowchart LR
   prev -. previous .-> cur
   next -. next .-> cur
 
-  cur --> prompt[content_writer<br/>sees prev/next as<br/>AdjacentLesson{name, description}]
+  cur --> prompt["content_writer<br/>sees prev/next as<br/>AdjacentLesson(name, description)"]
 ```
 
 [`LessonRepository.GetAdjacentAsync`](../../LessonsHub.Infrastructure/Repositories/LessonRepository.cs) finds the lessons with `LessonNumber < / > current` in the same plan. The writer uses these to (a) avoid repeating concepts the previous lesson covered and (b) foreshadow what's coming next when natural.

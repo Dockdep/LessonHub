@@ -95,8 +95,8 @@ The branching is at the *top* of the prompt so the LLM sees the language directi
 
 ```mermaid
 flowchart LR
-  classDef nat fill:#e8f5e9
-  classDef imm fill:#fff3e0
+  classDef nat fill:#e8f5e9,color:#1a1a1a
+  classDef imm fill:#fff3e0,color:#1a1a1a
 
   subgraph native[useNativeLanguage = true]
     direction TB

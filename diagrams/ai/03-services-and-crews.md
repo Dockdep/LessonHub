@@ -6,9 +6,9 @@ The "service" classes in [services/](../../lessons-ai-api/services/) are thin st
 
 ```mermaid
 flowchart LR
-  classDef svc fill:#e8f5e9
-  classDef crew fill:#bbdefb
-  classDef helper fill:#fff3e0
+  classDef svc fill:#e8f5e9,color:#1a1a1a
+  classDef crew fill:#bbdefb,color:#1a1a1a
+  classDef helper fill:#fff3e0,color:#1a1a1a
 
   cur[CurriculumService.generate_plan]:::svc --> cur_c[run_curriculum_crew]:::crew
   con[ContentService.generate_content]:::svc --> con_c[run_content_crew]:::crew

@@ -63,40 +63,40 @@ Jobs are decoupled from the UI lifecycle: the BG worker keeps running regardless
 
 ```mermaid
 flowchart LR
-  classDef svc fill:#e8f5e9
-  classDef store fill:#bbdefb
-  classDef api fill:#e3f2fd
+  classDef svc fill:#e8f5e9,color:#1a1a1a
+  classDef store fill:#bbdefb,color:#1a1a1a
+  classDef api fill:#e3f2fd,color:#1a1a1a
 
   AuthSvc[AuthService]:::svc --> A1[/POST /api/auth/google/]:::api
   Profile[UserProfileService]:::svc --> P1[/GET /api/user/profile/]:::api
   Profile --> P2[/PUT /api/user/profile/]:::api
   Plan[LessonPlanService]:::svc --> LP1[/POST /api/lessonplan/generate/]:::api
   Plan --> LP2[/POST /api/lessonplan/save/]:::api
-  Lesson[LessonService]:::svc --> L1[/GET /api/lesson/{id}/]:::api
-  Lesson --> L2[/PUT /api/lesson/{id}/]:::api
-  Lesson --> L3[/POST /api/lesson/{id}/regenerate-content/]:::api
-  Lesson --> L4[/PATCH /api/lesson/{id}/complete/]:::api
-  Lesson --> L5[/GET /api/lesson/{id}/siblings/]:::api
-  Lesson --> L6[/POST /api/lesson/{id}/generate-exercise/]:::api
-  Lesson --> L7[/POST /api/lesson/{id}/retry-exercise/]:::api
-  Lesson --> L8[/POST /api/lesson/exercise/{id}/check/]:::api
+  Lesson[LessonService]:::svc --> L1[/GET /api/lesson/&lt;id&gt;/]:::api
+  Lesson --> L2[/PUT /api/lesson/&lt;id&gt;/]:::api
+  Lesson --> L3[/POST /api/lesson/&lt;id&gt;/regenerate-content/]:::api
+  Lesson --> L4[/PATCH /api/lesson/&lt;id&gt;/complete/]:::api
+  Lesson --> L5[/GET /api/lesson/&lt;id&gt;/siblings/]:::api
+  Lesson --> L6[/POST /api/lesson/&lt;id&gt;/generate-exercise/]:::api
+  Lesson --> L7[/POST /api/lesson/&lt;id&gt;/retry-exercise/]:::api
+  Lesson --> L8[/POST /api/lesson/exercise/&lt;id&gt;/check/]:::api
   Day[LessonDayService]:::svc --> D1[/GET /api/lessonday/plans/]:::api
-  Day --> D2[/GET /api/lessonplan/{id}/]:::api
-  Day --> D3[/DELETE /api/lessonplan/{id}/]:::api
-  Day --> D4[/PUT /api/lessonplan/{id}/]:::api
-  Day --> D5[/GET /api/lessonday/{year}/{month}/]:::api
+  Day --> D2[/GET /api/lessonplan/&lt;id&gt;/]:::api
+  Day --> D3[/DELETE /api/lessonplan/&lt;id&gt;/]:::api
+  Day --> D4[/PUT /api/lessonplan/&lt;id&gt;/]:::api
+  Day --> D5[/GET /api/lessonday/&lt;year&gt;/&lt;month&gt;/]:::api
   Day --> D6[/POST /api/lessonday/assign/]:::api
-  Day --> D7[/DELETE /api/lessonday/unassign/{id}/]:::api
-  Day --> D8[/GET /api/lessonday/date/{date}/]:::api
-  Day --> D9[/GET /api/lessonday/plans/{id}/lessons/]:::api
+  Day --> D7[/DELETE /api/lessonday/unassign/&lt;id&gt;/]:::api
+  Day --> D8[/GET /api/lessonday/date/&lt;date&gt;/]:::api
+  Day --> D9[/GET /api/lessonday/plans/&lt;id&gt;/lessons/]:::api
   Doc[DocumentService]:::svc --> D10[/GET /api/documents/]:::api
-  Doc --> D11[/GET /api/documents/{id}/]:::api
+  Doc --> D11[/GET /api/documents/&lt;id&gt;/]:::api
   Doc --> D12[/POST /api/documents/upload/]:::api
-  Doc --> D13[/DELETE /api/documents/{id}/]:::api
+  Doc --> D13[/DELETE /api/documents/&lt;id&gt;/]:::api
   Share[LessonPlanShareService]:::svc --> S1[/GET /api/lessonplan/shared-with-me/]:::api
-  Share --> S2[/GET /api/lessonplan/{id}/shares/]:::api
-  Share --> S3[/POST /api/lessonplan/{id}/shares/]:::api
-  Share --> S4[/DELETE /api/lessonplan/{id}/shares/{userId}/]:::api
+  Share --> S2[/GET /api/lessonplan/&lt;id&gt;/shares/]:::api
+  Share --> S3[/POST /api/lessonplan/&lt;id&gt;/shares/]:::api
+  Share --> S4[/DELETE /api/lessonplan/&lt;id&gt;/shares/&lt;userId&gt;/]:::api
   Notify[NotificationService]:::svc
 
   Store[LessonDataStore]:::store --> Day

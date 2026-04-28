@@ -25,8 +25,8 @@ The wildcard `**` falls through (no 404 component currently — Angular logs a w
 
 ```mermaid
 flowchart LR
-  classDef page fill:#e3f2fd
-  classDef public fill:#c8e6c9
+  classDef page fill:#e3f2fd,color:#1a1a1a
+  classDef public fill:#c8e6c9,color:#1a1a1a
 
   login[/login/]:::public
   today[/today/]:::page
@@ -44,7 +44,7 @@ flowchart LR
   ldays --> ldetail
   lplans --> lpdetail
   lpdetail --> ldetail
-  ldetail --> ldetail: prev/next siblings
+  ldetail -->|prev/next siblings| ldetail
 
   lplan -. saves and redirects to .-> lpdetail
   docs -. attach to .-> lplan
@@ -87,13 +87,13 @@ A subtle SSR consequence: every authenticated route initially renders as a redir
 ```mermaid
 flowchart LR
   src[Component / Service]
-  call[HttpClient.request]
+  req[HttpClient.request]
   ai[apiBaseUrlInterceptor]
   authi[authInterceptor]
   http[fetch wire request]
   res[Response]
 
-  src --> call --> ai --> authi --> http --> res
+  src --> req --> ai --> authi --> http --> res
 ```
 
 ### `apiBaseUrlInterceptor` ([interceptors/api-base-url.interceptor.ts](../../lessonshub-ui/src/app/interceptors/api-base-url.interceptor.ts))

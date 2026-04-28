@@ -116,10 +116,10 @@ For each output doc, these are the input files an agent must read first:
 ````
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data fill:#f3e5f5
-  classDef service fill:#e8f5e9
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
+  classDef service fill:#e8f5e9,color:#1a1a1a
 
   user([User Browser]):::external
   ui[lessonshub-ui<br/>Angular SSR]:::internal
@@ -251,8 +251,12 @@ stateDiagram-v2
 - **Parens in labels**: `(...)` is a stadium/round-shape delimiter. `node[Label (parenthetical)]` will fail to parse. Quote: `node["Label (parenthetical)"]` — or just drop the parens if the `<br/>` line break is enough separation. Same rule applies to `node[function_call(arg)]` — quote it.
 - **Pipes in labels**: `|` is reserved for edge labels (`A -- |label| --> B`). Quote labels containing pipes.
 - **Parens with no space**: `node[(label)]` is a cylinder; `node[label]` is a rectangle. Make sure the inner-paren shapes match — typos like `node[(label]` silently fail.
-- **Reserved words as IDs**: avoid `end`, `direction`, `subgraph` etc. as node IDs.
+- **Reserved words as IDs**: avoid `end`, `direction`, `subgraph`, `call`, `default`, `style`, `class`, `click` etc. as node IDs. `call` and `click` are particularly subtle — they're for click-callback wiring, and using them as a node ID gives an inscrutable parser error mentioning `CALLBACKNAME`.
 - **Multi-line labels**: use `<br/>` (HTML), not `\n`.
+- **Double quotes inside `[...]` labels**: `node[Caption with "quotes" inside]` fails (parser sees `"quotes"` as a STR token). Wrap the whole label in `"..."` and use single quotes inside — `node["Caption with 'quotes' inside"]`.
+- **Edge labels in flowcharts**: use `A -->|label text| B`, not `A --> B: label`. The `:` syntax is sequence-diagram-only.
+- **Semicolons in `Note over` and arrow message text** (sequenceDiagram): `;` is a statement separator. `Note over X: foo; retry` parses as two statements and breaks. Use `,` or rephrase.
+- **HTML entities (`&lt;`, `&gt;`, `&amp;`) in sequenceDiagram message text**: these contain `;` which triggers the same statement-separator break above. In sequenceDiagram messages, `<` and `>` are plain text — use them directly. HTML entities are only needed inside flowchart labels (`[ ]`), where Mermaid does interpret tags. Best fallback: square brackets — `[project]/[userId]` reads naturally and is unambiguous in any context.
 
 ---
 

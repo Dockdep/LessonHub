@@ -35,8 +35,8 @@ All controllers share the same translation table. Defined in [ServiceResultExten
 
 ```mermaid
 flowchart LR
-  classDef ctrl fill:#e3f2fd
-  classDef svc fill:#e8f5e9
+  classDef ctrl fill:#e3f2fd,color:#1a1a1a
+  classDef svc fill:#e8f5e9,color:#1a1a1a
 
   ac[AuthController]:::ctrl
   upc[UserProfileController]:::ctrl

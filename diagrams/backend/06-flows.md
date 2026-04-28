@@ -202,7 +202,7 @@ sequenceDiagram
   RAG->>AI: POST /api/rag/ingest
   AI-->>RAG: { chunkCount }
   RAG-->>DS: ingest response
-  DS->>DR: doc.IngestionStatus = "Ingested"; doc.ChunkCount = N
+  DS->>DR: doc.IngestionStatus = "Ingested", doc.ChunkCount = N
   DS->>DR: SaveChangesAsync
   DS-->>DC: Ok(DocumentDto)
   DC-->>UI: 200 { document with status }

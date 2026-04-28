@@ -134,7 +134,7 @@ sequenceDiagram
   LS->>API: POST /api/lesson/{id}/regenerate-content?bypassDocCache=true
   API->>AI: POST /api/lesson-content/generate
   AI-->>API: new content
-  API->>API: lesson.Content = content; SaveChanges
+  API->>API: lesson.Content = content, SaveChanges
   API-->>LS: updated LessonDetailDto
   LS-->>LD: lesson
   LD->>LD: lesson.set(updated)
@@ -199,7 +199,7 @@ sequenceDiagram
   User->>LDays: click "Assign" on a lesson
   LDays->>LDS: assignLesson({ lessonId, date, dayName, dayDescription })
   LDS->>API: POST /api/lessonday/assign
-  API->>API: upsert LessonDay; set lesson.LessonDayId
+  API->>API: upsert LessonDay, set lesson.LessonDayId
   API-->>LDS: 200
   LDS-->>LDays: ok
   LDays->>Store: onScheduleChanged()
@@ -229,7 +229,7 @@ sequenceDiagram
   AI-->>API: { chunkCount }
   API-->>DS: HttpEventType.Response { document with status: "Ingested" }
   DS-->>Docs: { document }
-  Docs->>Docs: documents().push(document); isUploading.set(false)
+  Docs->>Docs: documents().push(document), isUploading.set(false)
   Docs->>Docs: notify.success
 ```
 
@@ -247,7 +247,7 @@ sequenceDiagram
   User->>Pr: paste Gemini API key, click Save
   Pr->>UPS: updateProfile({ googleApiKey })
   UPS->>API: PUT /api/user/profile
-  API->>API: Update User.GoogleApiKey; SaveChanges
+  API->>API: Update User.GoogleApiKey, SaveChanges
   API-->>UPS: UserProfileDto
   UPS-->>Pr: profile
   Pr->>Pr: notify.success

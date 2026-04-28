@@ -53,7 +53,7 @@ sequenceDiagram
       Crew->>Crew: append format_sources_section(docs) to content
       Crew-->>CS: LessonContentResponse
     else
-      Note over Crew: feedback to plan.description; retry
+      Note over Crew: feedback to plan.description, retry
     end
   end
 ```
@@ -62,8 +62,8 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  classDef src fill:#bbdefb
-  classDef block fill:#fff3e0
+  classDef src fill:#bbdefb,color:#1a1a1a
+  classDef block fill:#fff3e0,color:#1a1a1a
 
   framework[Framework grounding<br/>analyzer + DDG]:::src
   rag[RAG grounding<br/>per-lesson chunks from<br/>uploaded document]:::src
@@ -128,10 +128,10 @@ Without this, users have no way to verify the writer's claims or dive deeper. Wi
 
 ```mermaid
 flowchart LR
-  classDef c fill:#bbdefb
+  classDef c fill:#bbdefb,color:#1a1a1a
 
   q[Analyzer query]:::c
-  k[cache key:<br/>q|<lowercased query>]:::c
+  k["cache key:<br/>q | (lowercased query)"]:::c
   hit{cached and<br/>not expired?}:::c
   ddg[DDG + page fetch]:::c
   cache[(DocumentationCache)]:::c

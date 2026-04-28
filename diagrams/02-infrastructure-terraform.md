@@ -8,10 +8,10 @@ Per-resource inventory of [terraform/](../terraform/). All GCP resources for Les
 
 ```mermaid
 flowchart TD
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data fill:#f3e5f5
-  classDef iam fill:#fff3e0
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
+  classDef iam fill:#fff3e0,color:#1a1a1a
 
   apis[google_project_service<br/>x8 enabled APIs]:::internal
 
@@ -127,7 +127,7 @@ Both databases share the *same* `app` user with a random 64-character password g
 
 ```mermaid
 flowchart LR
-  classDef sa fill:#fff3e0
+  classDef sa fill:#fff3e0,color:#1a1a1a
 
   sa_api[sa-lessonshub]:::sa
   sa_ui[sa-lessonshub-ui]:::sa

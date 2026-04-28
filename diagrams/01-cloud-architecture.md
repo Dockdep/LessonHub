@@ -8,10 +8,10 @@ The runtime topology of LessonsHub. Three Cloud Run services, one Cloud SQL inst
 
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data fill:#f3e5f5
-  classDef cicd fill:#fff3e0
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
+  classDef cicd fill:#fff3e0,color:#1a1a1a
 
   user([Browser]):::external
   google((Google OAuth)):::external
@@ -77,9 +77,9 @@ For development on a laptop, the same containers run behind a Caddy reverse-prox
 
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
-  classDef data fill:#f3e5f5
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
+  classDef data fill:#f3e5f5,color:#1a1a1a
 
   user([Browser http://localhost]):::external
   caddy[Caddy<br/>:80 reverse-proxy]:::internal
@@ -118,8 +118,8 @@ The same pattern applies to `ng serve --proxy-config` for direct `:4200` dev —
 
 ```mermaid
 flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7
-  classDef internal fill:#e3f2fd
+  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
+  classDef internal fill:#e3f2fd,color:#1a1a1a
 
   ui[Angular UI]:::internal
   api[.NET API]:::internal
