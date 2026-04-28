@@ -44,13 +44,10 @@ public class LessonsAiApiClientTests
     {
         var handler = new CapturingHandler();
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:8000") };
-        var accessor = new HttpContextAccessor
-        {
-            HttpContext = new DefaultHttpContext { User = AuthHelper.PrincipalFor(actingAs) }
-        };
+        var currentUser = new TestCurrentUser(actingAs);
         var settings = new LessonsAiApiSettings();
-        var keyProvider = new UserApiKeyProvider(db.Context, accessor);
-        var costLogger = new AiCostLogger(db.Context, accessor, settings);
+        var keyProvider = new UserApiKeyProvider(db.Context, currentUser);
+        var costLogger = new AiCostLogger(db.Context, currentUser, settings);
         var client = new LessonsAiApiClient(
             http,
             NullLogger<LessonsAiApiClient>.Instance,

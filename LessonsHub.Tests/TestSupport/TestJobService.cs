@@ -34,4 +34,10 @@ public sealed class TestJobService : IJobService
 
     public Task<ServiceResult<List<JobDto>>> ListForCurrentUserAsync(JobStatus? status = null, CancellationToken ct = default) =>
         Task.FromResult(ServiceResult<List<JobDto>>.Ok(new List<JobDto>()));
+
+    public Task<ServiceResult<JobDto?>> FindInFlightForCurrentUserAsync(string type, string? relatedEntityType = null, int? relatedEntityId = null, CancellationToken ct = default) =>
+        Task.FromResult(ServiceResult<JobDto?>.Ok(null));
+
+    public Task<ServiceResult<List<JobDto>>> ListInFlightForEntityAsync(string relatedEntityType, int relatedEntityId, CancellationToken ct = default) =>
+        Task.FromResult(ServiceResult<List<JobDto>>.Ok(new List<JobDto>()));
 }

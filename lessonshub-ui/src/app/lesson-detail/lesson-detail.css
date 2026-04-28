@@ -335,3 +335,6 @@
 
 .prev-btn { color: #4338ca !important; border-color: #c7d2fe !important; }
 .next-btn { background-color: #4338ca !important; color: white !important; margin-left: auto; }
+
+/* Generation progress banner styles live in the shared
+   generation-banner component (used by every AI-job UI in the app). */

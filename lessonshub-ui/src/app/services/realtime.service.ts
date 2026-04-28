@@ -9,6 +9,7 @@ import {
 import { Observable, Subject, filter } from 'rxjs';
 import { API_BASE_URL } from '../api-base-url';
 import { JobEvent } from '../models/job.model';
+import { AuthService } from './auth.service';
 
 /**
  * Manages a single SignalR connection to /hubs/generation. Lazily connects on
@@ -27,6 +28,7 @@ export class RealtimeService {
   constructor(
     @Inject(PLATFORM_ID) private platformId: object,
     @Inject(API_BASE_URL) private apiBaseUrl: string,
+    private auth: AuthService,
   ) {}
 
   /**
@@ -52,7 +54,9 @@ export class RealtimeService {
       .withUrl(url, {
         // SignalR adds ?access_token=... on the WS handshake — the .NET side
         // accepts that for /hubs/* paths only (see Program.cs JwtBearerEvents).
-        accessTokenFactory: () => localStorage.getItem('token') ?? '',
+        // Source the token from AuthService so we stay in sync with whatever
+        // localStorage key it uses (currently `auth_token`).
+        accessTokenFactory: () => this.auth.getToken() ?? '',
       })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)

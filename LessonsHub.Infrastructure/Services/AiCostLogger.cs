@@ -1,30 +1,35 @@
-using System.Security.Claims;
+using LessonsHub.Application.Abstractions;
 using LessonsHub.Application.Interfaces;
 using LessonsHub.Application.Models.Responses;
 using LessonsHub.Domain.Entities;
 using LessonsHub.Infrastructure.Configuration;
 using LessonsHub.Infrastructure.Data;
-using Microsoft.AspNetCore.Http;
 
 namespace LessonsHub.Infrastructure.Services;
 
 /// <summary>
 /// Persists one <see cref="AiRequestLog"/> per <see cref="ModelUsage"/> entry,
 /// computing pricing via <see cref="ModelPricingResolver"/>. Single concern.
+///
+/// Reads the acting user via <see cref="ICurrentUser"/> so cost logs land
+/// with the right <c>UserId</c> in both HTTP-request and background-job
+/// scopes (the JobBackgroundService populates <see cref="UserContext"/> from
+/// <c>Job.UserId</c>). When unauthenticated (e.g. anonymous endpoints), the
+/// row is saved with <c>UserId=null</c>.
 /// </summary>
 public class AiCostLogger : IAiCostLogger
 {
     private readonly LessonsHubDbContext _dbContext;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICurrentUser _currentUser;
     private readonly ModelPricingResolver _pricing;
 
     public AiCostLogger(
         LessonsHubDbContext dbContext,
-        IHttpContextAccessor httpContextAccessor,
+        ICurrentUser currentUser,
         LessonsAiApiSettings aiApiSettings)
     {
         _dbContext = dbContext;
-        _httpContextAccessor = httpContextAccessor;
+        _currentUser = currentUser;
         _pricing = new ModelPricingResolver(aiApiSettings.Pricing);
     }
 
@@ -34,8 +39,7 @@ public class AiCostLogger : IAiCostLogger
         var list = usage as IList<ModelUsage> ?? usage.ToList();
         if (list.Count == 0) return;
 
-        var userIdString = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        int? userId = int.TryParse(userIdString, out var parsedId) ? parsedId : null;
+        int? userId = _currentUser.IsAuthenticated ? _currentUser.Id : null;
 
         foreach (var entry in list)
         {

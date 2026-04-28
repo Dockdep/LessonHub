@@ -27,6 +27,32 @@ public sealed class JobRepository : RepositoryBase, IJobRepository
         return q.OrderByDescending(j => j.CreatedAt).ToListAsync(ct);
     }
 
+    public Task<Job?> FindInFlightAsync(int userId, string type, string? relatedEntityType, int? relatedEntityId, CancellationToken ct = default)
+    {
+        var q = _db.Jobs.Where(j =>
+            j.UserId == userId
+            && j.Type == type
+            && (j.Status == JobStatus.Pending || j.Status == JobStatus.Running));
+
+        if (!string.IsNullOrEmpty(relatedEntityType))
+            q = q.Where(j => j.RelatedEntityType == relatedEntityType);
+        if (relatedEntityId.HasValue)
+            q = q.Where(j => j.RelatedEntityId == relatedEntityId.Value);
+
+        // Newest first — if for some reason there are duplicates (idempotency miss),
+        // the most recent one is the right thing to track.
+        return q.OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync(ct);
+    }
+
+    public Task<List<Job>> ListInFlightForEntityAsync(int userId, string relatedEntityType, int relatedEntityId, CancellationToken ct = default) =>
+        _db.Jobs
+            .Where(j => j.UserId == userId
+                        && j.RelatedEntityType == relatedEntityType
+                        && j.RelatedEntityId == relatedEntityId
+                        && (j.Status == JobStatus.Pending || j.Status == JobStatus.Running))
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync(ct);
+
     public Task<List<Job>> ListByStatusAsync(JobStatus status, CancellationToken ct = default) =>
         _db.Jobs.Where(j => j.Status == status).ToListAsync(ct);
 

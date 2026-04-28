@@ -24,4 +24,16 @@ public interface IJobService
     Task<ServiceResult<JobDto>> GetForCurrentUserAsync(Guid id, CancellationToken ct = default);
 
     Task<ServiceResult<List<JobDto>>> ListForCurrentUserAsync(JobStatus? status = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns the in-flight (Pending or Running) job matching the given type
+    /// and entity coords for the current user, or <c>null</c> if none.
+    /// </summary>
+    Task<ServiceResult<JobDto?>> FindInFlightForCurrentUserAsync(string type, string? relatedEntityType = null, int? relatedEntityId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// All in-flight jobs the current user has tied to a single entity.
+    /// Lets the UI repaint every active banner on a single load.
+    /// </summary>
+    Task<ServiceResult<List<JobDto>>> ListInFlightForEntityAsync(string relatedEntityType, int relatedEntityId, CancellationToken ct = default);
 }

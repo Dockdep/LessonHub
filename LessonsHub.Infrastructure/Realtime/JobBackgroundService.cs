@@ -9,6 +9,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+// camelCase to match what the rest of the API emits (Newtonsoft is configured
+// for camelCase in Program.cs) and what the Angular models expect. Default
+// System.Text.Json options would emit PascalCase and the UI would parse it
+// into all-undefined fields.
+
 namespace LessonsHub.Infrastructure.Realtime;
 
 /// <summary>
@@ -23,6 +28,11 @@ namespace LessonsHub.Infrastructure.Realtime;
 /// </summary>
 public sealed class JobBackgroundService : BackgroundService
 {
+    private static readonly JsonSerializerOptions ResultJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
     private readonly IServiceProvider _services;
     private readonly IJobQueue _queue;
     private readonly ILogger<JobBackgroundService> _logger;
@@ -128,7 +138,7 @@ public sealed class JobBackgroundService : BackgroundService
             var result = await executor.ExecuteAsync(job, ct);
 
             job.Status = JobStatus.Completed;
-            job.ResultJson = result is null ? null : JsonSerializer.Serialize(result);
+            job.ResultJson = result is null ? null : JsonSerializer.Serialize(result, ResultJsonOptions);
             job.CompletedAt = DateTime.UtcNow;
             await jobs.SaveChangesAsync(ct);
         }

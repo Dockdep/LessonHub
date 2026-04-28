@@ -6,7 +6,7 @@ Two Postgres databases, both on the same Cloud SQL instance.
 
 | Database | Owned by | Schema source | Tables |
 |---|---|---|---|
-| **`LessonsHub`** | `.NET` API | EF Core migrations | 13 entity tables (User, LessonPlan, Lesson, …) + 1 history table (`__EFMigrationsHistory`) |
+| **`LessonsHub`** | `.NET` API | EF Core migrations | 14 entity tables (User, LessonPlan, Lesson, …, Job) + 1 history table (`__EFMigrationsHistory`) |
 | **`LessonsAi`** | Python AI service | Raw asyncpg `CREATE TABLE IF NOT EXISTS` at startup | 2 tables: `DocumentationCache`, `DocumentChunks` (+ pgvector extension) |
 
 The two services intentionally do *not* share a database — separation of concerns at the storage layer mirrors the deployment-tier separation.
@@ -24,6 +24,7 @@ erDiagram
   USER ||--o{ LESSONPLANSHARE : "shared with"
   USER ||--o{ EXERCISE : "did (UserId)"
   USER ||--o{ DOCUMENT : "uploaded"
+  USER ||--o{ JOB : "enqueued by"
 
   LESSONPLAN ||--o{ LESSON : "contains"
   LESSONPLAN ||--o{ LESSONPLANSHARE : "shared via"
@@ -148,6 +149,21 @@ erDiagram
     datetime IngestedAt
     int UserId FK
   }
+  JOB {
+    guid Id PK
+    int UserId FK
+    string Type "LessonPlanGenerate, LessonContentGenerate, ..."
+    int Status "Pending=0, Running=1, Completed=2, Failed=3"
+    text PayloadJson
+    text ResultJson
+    string Error
+    string IdempotencyKey "unique per (UserId, Type, Key)"
+    string RelatedEntityType "Lesson | Exercise | Document"
+    int RelatedEntityId
+    datetime CreatedAt
+    datetime StartedAt
+    datetime CompletedAt
+  }
   AIREQUESTLOG {
     int Id PK
     int UserId FK
@@ -174,6 +190,7 @@ erDiagram
 - **`Lesson.LessonDayId`** is *shared* across users despite `LessonDay` being per-user. Practical effect: only the plan owner can assign/unassign a lesson today, so this is consistent. A future per-user-assignment redesign would split this.
 - **`Document.StorageUri`** is opaque: `gs://bucket/path` in GCS prod, `file:///abs/path` in local-dev. Only the storage layer ([LocalDocumentStorage.cs](../LessonsHub.Infrastructure/Services/LocalDocumentStorage.cs), [GcsDocumentStorage.cs](../LessonsHub.Infrastructure/Services/GcsDocumentStorage.cs)) and the Python RAG service interpret it.
 - **Cascade behaviour**: deleting a `LessonPlan` cascades to its `Lessons`, which cascades to their `Exercises`/`Videos`/`Books`/`Documentation` (configured in `LessonsHubDbContext.OnModelCreating`). `LessonDay` rows that become empty after a plan delete are *not* auto-deleted by the DB — `LessonPlanService.DeleteAsync` cleans them up explicitly.
+- **`Job` table**: persists the SignalR-driven background work pipeline. Filtered unique index on `(UserId, Type, IdempotencyKey)` lets the same client click coalesce to one job (the index excludes NULL keys so a missing header doesn't conflict with anything). Indexed on `(UserId, Status)` for the in-flight UI banner. See [backend/04-infrastructure.md](backend/04-infrastructure.md) for the executor/queue pipeline.
 
 ### Migration history
 
@@ -181,6 +198,7 @@ EF migrations recording the schema's evolution (most recent on top):
 
 | Migration | What |
 |---|---|
+| `20260428161435_AddJobs` | `Jobs` table for the SignalR background-work pipeline (status, payload/result JSON, idempotency key) |
 | `20260427193026_AddLanguageToLearnAndUseNativeLanguage` | New columns on `LessonPlan` for Language-lesson translation toggle |
 | `20260427150037_MigrateDocumentLessonTypeToDefault` | Old "Document" lesson type → "Default" (orthogonalized doc grounding) |
 | `20260427125723_AddLessonPlanDocumentId` | `LessonPlan.DocumentId` FK to `Document` |

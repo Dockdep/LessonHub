@@ -16,6 +16,22 @@ public interface IJobRepository : IRepository
     /// <summary>Used by the in-flight UI banner. Status filter is optional.</summary>
     Task<List<Job>> ListForUserAsync(int userId, JobStatus? status = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Look up an in-flight (Pending/Running) job for the user matching type
+    /// and (optionally) related-entity coordinates. Used by the UI on page
+    /// load to resume tracking a job that started before the user navigated
+    /// away — prevents double-firing of generation work.
+    /// </summary>
+    Task<Job?> FindInFlightAsync(int userId, string type, string? relatedEntityType, int? relatedEntityId, CancellationToken ct = default);
+
+    /// <summary>
+    /// All in-flight jobs (Pending/Running) the user has against a single
+    /// entity — e.g. every job tied to Lesson:42 (lazy content gen, exercise
+    /// generation, etc.). Lets the UI restore every active banner on a single
+    /// page load with one query.
+    /// </summary>
+    Task<List<Job>> ListInFlightForEntityAsync(int userId, string relatedEntityType, int relatedEntityId, CancellationToken ct = default);
+
     /// <summary>Startup recovery: re-enqueue Pending jobs left by a previous instance.</summary>
     Task<List<Job>> ListByStatusAsync(JobStatus status, CancellationToken ct = default);
 

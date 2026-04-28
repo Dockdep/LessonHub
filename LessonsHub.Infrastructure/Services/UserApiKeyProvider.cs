@@ -1,7 +1,6 @@
-using System.Security.Claims;
+using LessonsHub.Application.Abstractions;
 using LessonsHub.Application.Interfaces;
 using LessonsHub.Infrastructure.Data;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace LessonsHub.Infrastructure.Services;
@@ -10,24 +9,30 @@ namespace LessonsHub.Infrastructure.Services;
 /// Reads <see cref="Domain.Entities.User.GoogleApiKey"/> for the JWT-authenticated
 /// caller. Throws when no key is set so AI calls fail loudly with a clear message
 /// the SPA can surface in a profile-redirect prompt.
+///
+/// Resolves the user via <see cref="ICurrentUser"/> (not the raw HttpContext)
+/// so this works inside both HTTP request scopes AND background-job scopes —
+/// the JobBackgroundService sets <c>UserContext.UserId</c> before resolving
+/// the executor, and CurrentUser falls through to that when no HttpContext
+/// is available.
 /// </summary>
 public class UserApiKeyProvider : IUserApiKeyProvider
 {
     private readonly LessonsHubDbContext _dbContext;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ICurrentUser _currentUser;
 
-    public UserApiKeyProvider(LessonsHubDbContext dbContext, IHttpContextAccessor httpContextAccessor)
+    public UserApiKeyProvider(LessonsHubDbContext dbContext, ICurrentUser currentUser)
     {
         _dbContext = dbContext;
-        _httpContextAccessor = httpContextAccessor;
+        _currentUser = currentUser;
     }
 
     public async Task<string> GetCurrentUserKeyAsync()
     {
-        var userIdString = _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!int.TryParse(userIdString, out var userId))
+        if (!_currentUser.IsAuthenticated)
             throw new InvalidOperationException("No authenticated user in context.");
 
+        var userId = _currentUser.Id;
         var apiKey = await _dbContext.Users
             .Where(u => u.Id == userId)
             .Select(u => u.GoogleApiKey)

@@ -1,5 +1,5 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { ReactiveFormsModule, FormGroup, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -11,7 +11,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { GenerationBanner } from '../generation-banner/generation-banner';
 import { LessonPlanService } from '../services/lesson-plan.service';
+import { JobsService } from '../services/jobs.service';
 import { NotificationService } from '../services/notification.service';
 import { LessonDataStore } from '../services/lesson-data.store';
 import { DocumentService } from '../services/document.service';
@@ -32,7 +34,8 @@ import { JobStatus } from '../models/job.model';
     MatChipsModule,
     MatIconModule,
     MatSelectModule,
-    MatTooltipModule
+    MatTooltipModule,
+    GenerationBanner
   ],
   templateUrl: './lesson-plan.html',
   styleUrl: './lesson-plan.css',
@@ -80,6 +83,18 @@ export class LessonPlan implements OnInit {
   private store = inject(LessonDataStore);
   private route = inject(ActivatedRoute);
   private docs = inject(DocumentService);
+  private jobsService = inject(JobsService);
+  private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  /**
+   * localStorage key for the most recent generated-but-unsaved plan.
+   * Survives navigation away from the page so the user can return and
+   * still hit "Save to Library". Cleared on save or explicit reset.
+   * Stores `{ plan, savedAt: ms-since-epoch }` — entries older than 24h
+   * are discarded on load (fresher generations are usually intended).
+   */
+  private static PENDING_PLAN_KEY = 'lessonshub:pendingPlan';
+  private static PENDING_PLAN_TTL_MS = 24 * 60 * 60 * 1000;
 
   constructor(private lessonPlanService: LessonPlanService) {}
 
@@ -91,6 +106,26 @@ export class LessonPlan implements OnInit {
         docs.filter((d) => d.ingestionStatus === 'Ingested')
       ),
       error: () => this.availableDocuments.set([]),
+    });
+
+    // Resume tracking an in-flight plan-generation job from a previous
+    // navigation (the BG worker keeps running regardless of UI state).
+    // If found, show the banner + auto-populate the result on completion
+    // so the user doesn't lose work that's already been billed for.
+    this.jobsService.findInFlight('LessonPlanGenerate').subscribe({
+      next: (existing) => {
+        if (existing) {
+          this.isLoading.set(true);
+          this.generationPhase.set(existing.status === 1 /* Running */ ? 'generating' : 'queued');
+          this.consumePlanJobEvents(this.jobsService.subscribeToExistingJob(existing.id));
+        } else {
+          // No live job — but a previously-completed plan may still be
+          // sitting unsaved in localStorage. Restore so the user can save
+          // it without re-paying for generation.
+          this.loadPendingPlan();
+        }
+      },
+      error: () => this.loadPendingPlan(),
     });
 
     // Pre-select a document if we arrived via /documents → "Generate plan".
@@ -161,7 +196,16 @@ export class LessonPlan implements OnInit {
       documentId: sourceDoc?.id ?? null,
     };
 
-    this.lessonPlanService.generateLessonPlan(request).subscribe({
+    this.consumePlanJobEvents(this.lessonPlanService.generateLessonPlan(request));
+  }
+
+  /**
+   * Shared event handler for both fresh generations and resumed in-flight
+   * jobs (after navigation). Drives the banner, populates `generatedPlan`
+   * on Completed, surfaces errors on Failed.
+   */
+  private consumePlanJobEvents(stream$: ReturnType<LessonPlanService['generateLessonPlan']>): void {
+    stream$.subscribe({
       next: (event) => {
         if (event.status === JobStatus.Running) {
           this.generationPhase.set('generating');
@@ -172,6 +216,9 @@ export class LessonPlan implements OnInit {
           if (plan) {
             this.generatedPlan.set(plan);
             this.planNameEdit.setValue(plan.planName);
+            // Persist so the user can navigate away and come back to save.
+            this.savePendingPlan(plan);
+            this.notify.success('Lesson plan ready — review and save when you like.');
           }
           this.isLoading.set(false);
           this.generationPhase.set('');
@@ -179,10 +226,12 @@ export class LessonPlan implements OnInit {
       },
       error: (err) => {
         console.error('Error:', err);
-        this.error.set('Error generating lesson plan: ' + (err.error?.message || err.message));
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.error.set('Error generating lesson plan: ' + detail);
+        this.notify.error('Lesson plan generation failed: ' + detail);
         this.isLoading.set(false);
         this.generationPhase.set('');
-      }
+      },
     });
   }
 
@@ -214,6 +263,9 @@ export class LessonPlan implements OnInit {
         this.saveSuccess.set(true);
         this.isSaving.set(false);
         this.store.onPlanChanged();
+        // Plan is now persisted server-side — drop the localStorage copy
+        // so the next /lesson-plan visit starts clean.
+        this.clearPendingPlan();
         this.notify.success('Plan saved to library!');
         setTimeout(() => this.saveSuccess.set(false), 3000);
       },
@@ -241,6 +293,53 @@ export class LessonPlan implements OnInit {
     this.saveSuccess.set(false);
     this.generatedPlan.set(null);
     this.editingLessonIndex = -1;
+    this.clearPendingPlan();
+  }
+
+  // -- localStorage persistence for unsaved generated plans ----------------
+
+  /**
+   * Restore a previously-generated-but-unsaved plan from localStorage.
+   * Discards entries older than the TTL — fresher generations are usually
+   * what the user wants, and stale entries pile up across sessions.
+   */
+  private loadPendingPlan(): void {
+    if (!this.isBrowser) return;
+    const raw = localStorage.getItem(LessonPlan.PENDING_PLAN_KEY);
+    if (!raw) return;
+    try {
+      const entry = JSON.parse(raw) as { plan: LessonPlanResponse; savedAt: number };
+      if (!entry?.plan || !entry?.savedAt) {
+        localStorage.removeItem(LessonPlan.PENDING_PLAN_KEY);
+        return;
+      }
+      if (Date.now() - entry.savedAt > LessonPlan.PENDING_PLAN_TTL_MS) {
+        localStorage.removeItem(LessonPlan.PENDING_PLAN_KEY);
+        return;
+      }
+      this.generatedPlan.set(entry.plan);
+      this.planNameEdit.setValue(entry.plan.planName);
+    } catch {
+      // Corrupt entry — drop it.
+      localStorage.removeItem(LessonPlan.PENDING_PLAN_KEY);
+    }
+  }
+
+  private savePendingPlan(plan: LessonPlanResponse): void {
+    if (!this.isBrowser) return;
+    try {
+      localStorage.setItem(
+        LessonPlan.PENDING_PLAN_KEY,
+        JSON.stringify({ plan, savedAt: Date.now() }),
+      );
+    } catch {
+      // Quota errors etc. — non-fatal; the user just loses recovery on revisit.
+    }
+  }
+
+  private clearPendingPlan(): void {
+    if (!this.isBrowser) return;
+    localStorage.removeItem(LessonPlan.PENDING_PLAN_KEY);
   }
 
   downloadJson(): void {

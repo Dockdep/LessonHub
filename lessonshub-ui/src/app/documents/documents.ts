@@ -99,7 +99,7 @@ export class Documents implements OnInit {
     this.docs.subscribeToIngest(jobId).subscribe({
       next: (event) => {
         if (event.status === 2 /* Completed */) {
-          this.notify.success(`"${fileName}" ingestion complete.`);
+          this.notify.success(`"${fileName}" is ready to use.`);
           this.refresh();
         } else if (event.status === 3 /* Failed */) {
           this.notify.error(`Ingestion failed for "${fileName}": ${event.error ?? 'unknown error'}`);
@@ -108,6 +108,7 @@ export class Documents implements OnInit {
       },
       error: (err) => {
         console.error('Ingest subscription failed', err);
+        this.notify.error(`Lost connection while ingesting "${fileName}".`);
       },
     });
   }

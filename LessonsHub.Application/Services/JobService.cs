@@ -70,4 +70,16 @@ public sealed class JobService : IJobService
         var jobs = await _jobs.ListForUserAsync(_currentUser.Id, status, ct);
         return ServiceResult<List<JobDto>>.Ok(jobs.Select(JobMapper.ToDto).ToList());
     }
+
+    public async Task<ServiceResult<JobDto?>> FindInFlightForCurrentUserAsync(string type, string? relatedEntityType = null, int? relatedEntityId = null, CancellationToken ct = default)
+    {
+        var job = await _jobs.FindInFlightAsync(_currentUser.Id, type, relatedEntityType, relatedEntityId, ct);
+        return ServiceResult<JobDto?>.Ok(job is null ? null : JobMapper.ToDto(job));
+    }
+
+    public async Task<ServiceResult<List<JobDto>>> ListInFlightForEntityAsync(string relatedEntityType, int relatedEntityId, CancellationToken ct = default)
+    {
+        var jobs = await _jobs.ListInFlightForEntityAsync(_currentUser.Id, relatedEntityType, relatedEntityId, ct);
+        return ServiceResult<List<JobDto>>.Ok(jobs.Select(JobMapper.ToDto).ToList());
+    }
 }

@@ -14,7 +14,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MarkdownModule } from 'ngx-markdown';
+import { GenerationBanner } from '../generation-banner/generation-banner';
 import { LessonService } from '../services/lesson.service';
+import { JobsService } from '../services/jobs.service';
 import { Lesson, Exercise, UpdateLessonInfo } from '../models/lesson.model';
 import { JobStatus } from '../models/job.model';
 import { GenerateExerciseDialog, GenerateExerciseDialogResult } from '../generate-exercise-dialog/generate-exercise-dialog';
@@ -40,7 +42,8 @@ import { NotificationService } from '../services/notification.service';
     MatSelectModule,
     MatChipsModule,
     MatDialogModule,
-    MarkdownModule
+    MarkdownModule,
+    GenerationBanner
   ],
   templateUrl: './lesson-detail.html',
   styleUrl: './lesson-detail.css'
@@ -51,6 +54,12 @@ export class LessonDetail implements OnInit {
   error = signal('');
   isGeneratingExercise = signal(false);
   isRegenerating = signal(false);
+
+  // Phased status for the GenerationBanner — one signal per concurrent kind
+  // of work. Empty string hides the banner. Driven by the JobEvent stream.
+  regenerationPhase = signal<'queued' | 'generating' | ''>('');
+  exercisePhase = signal<'queued' | 'generating' | ''>('');
+  exerciseLabel = signal<'a new exercise' | 'a remedial exercise' | 'your answer review'>('a new exercise');
   isTogglingComplete = signal(false);
   isEditingInfo = signal(false);
   isSavingInfo = signal(false);
@@ -78,6 +87,7 @@ export class LessonDetail implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private lessonService: LessonService,
+    private jobsService: JobsService,
     private dialog: MatDialog
   ) {}
 
@@ -118,11 +128,19 @@ export class LessonDetail implements OnInit {
             this.nextLessonId.set(res.nextLessonId);
           }
         });
-        // Lazy content generation: backend no longer auto-generates on read.
-        // If Content is empty, kick off the explicit job and stream the
-        // result via SignalR. The component shows the regenerating spinner.
-        if (this.isBrowser && !data.content?.trim()) {
-          this.triggerLazyContentGen(id);
+        if (this.isBrowser) {
+          // Restore any banners for jobs the user left running on a previous
+          // visit (regenerate / exercise gen / retry). Catches the "did the
+          // tab survive my coffee break" case across the whole detail page.
+          this.restoreInFlightBanners(id);
+
+          // Lazy content gen: backend no longer auto-generates on read.
+          // If Content is still empty AND no LessonContentGenerate job is
+          // already in flight (restoreInFlightBanners would have picked it
+          // up), kick off a fresh one.
+          if (!data.content?.trim()) {
+            this.triggerLazyContentGen(id);
+          }
         }
       },
       error: (err) => {
@@ -155,21 +173,33 @@ export class LessonDetail implements OnInit {
     if (!lesson) return;
 
     this.isGeneratingExercise.set(true);
+    this.exercisePhase.set('queued');
+    this.exerciseLabel.set('a new exercise');
     this.lessonService.generateExercise(lesson.id, params.difficulty, params.comment).subscribe({
       next: (event) => {
-        if (event.status !== JobStatus.Completed) return;
-        const exercise = this.lessonService.parseExerciseResult(event);
-        if (exercise) {
-          lesson.exercises.push(exercise);
-          this.lesson.set({ ...lesson });
-          this.openNewPanel();
+        if (event.status === JobStatus.Running) {
+          this.exercisePhase.set('generating');
+          return;
         }
-        this.isGeneratingExercise.set(false);
+        if (event.status === JobStatus.Completed) {
+          const exercise = this.lessonService.parseExerciseResult(event);
+          if (exercise) {
+            lesson.exercises.push(exercise);
+            this.lesson.set({ ...lesson });
+            this.openNewPanel();
+            this.notify.success('Exercise ready.');
+          }
+          this.isGeneratingExercise.set(false);
+          this.exercisePhase.set('');
+        }
       },
       error: (err) => {
         console.error('Error generating exercise', err);
-        this.error.set('Failed to generate exercise: ' + (err.error?.message || err.message));
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.error.set('Failed to generate exercise: ' + detail);
+        this.notify.error('Exercise generation failed: ' + detail);
         this.isGeneratingExercise.set(false);
+        this.exercisePhase.set('');
       }
     });
   }
@@ -179,21 +209,33 @@ export class LessonDetail implements OnInit {
     if (!lesson || !params.review) return;
 
     this.isGeneratingExercise.set(true);
+    this.exercisePhase.set('queued');
+    this.exerciseLabel.set('a remedial exercise');
     this.lessonService.retryExercise(lesson.id, params.difficulty, params.review, params.comment).subscribe({
       next: (event) => {
-        if (event.status !== JobStatus.Completed) return;
-        const exercise = this.lessonService.parseExerciseResult(event);
-        if (exercise) {
-          lesson.exercises.push(exercise);
-          this.lesson.set({ ...lesson });
-          this.openNewPanel();
+        if (event.status === JobStatus.Running) {
+          this.exercisePhase.set('generating');
+          return;
         }
-        this.isGeneratingExercise.set(false);
+        if (event.status === JobStatus.Completed) {
+          const exercise = this.lessonService.parseExerciseResult(event);
+          if (exercise) {
+            lesson.exercises.push(exercise);
+            this.lesson.set({ ...lesson });
+            this.openNewPanel();
+            this.notify.success('Remedial exercise ready.');
+          }
+          this.isGeneratingExercise.set(false);
+          this.exercisePhase.set('');
+        }
       },
       error: (err) => {
         console.error('Error retrying exercise', err);
-        this.error.set('Failed to generate exercise: ' + (err.error?.message || err.message));
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.error.set('Failed to generate exercise: ' + detail);
+        this.notify.error('Exercise retry failed: ' + detail);
         this.isGeneratingExercise.set(false);
+        this.exercisePhase.set('');
       }
     });
   }
@@ -211,20 +253,32 @@ export class LessonDetail implements OnInit {
     if (!answer) return;
 
     this.submittingExerciseId.set(exercise.id);
+    this.exercisePhase.set('queued');
+    this.exerciseLabel.set('your answer review');
     this.lessonService.submitExerciseAnswer(exercise.id, answer).subscribe({
       next: (event) => {
-        if (event.status !== JobStatus.Completed) return;
-        const reviewed = this.lessonService.parseAnswerResult(event);
-        if (reviewed) {
-          exercise.answers.push(reviewed);
-          ctrl.setValue('');
+        if (event.status === JobStatus.Running) {
+          this.exercisePhase.set('generating');
+          return;
         }
-        this.submittingExerciseId.set(null);
+        if (event.status === JobStatus.Completed) {
+          const reviewed = this.lessonService.parseAnswerResult(event);
+          if (reviewed) {
+            exercise.answers.push(reviewed);
+            ctrl.setValue('');
+            this.notify.success('Your answer was reviewed.');
+          }
+          this.submittingExerciseId.set(null);
+          this.exercisePhase.set('');
+        }
       },
       error: (err) => {
         console.error('Error submitting answer', err);
-        this.error.set('Failed to submit answer: ' + (err.error?.message || err.message));
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.error.set('Failed to submit answer: ' + detail);
+        this.notify.error('Answer review failed: ' + detail);
         this.submittingExerciseId.set(null);
+        this.exercisePhase.set('');
       }
     });
   }
@@ -306,45 +360,170 @@ export class LessonDetail implements OnInit {
     if (!lesson) return;
 
     this.isRegenerating.set(true);
+    this.regenerationPhase.set('queued');
     this.error.set('');
 
     this.lessonService.regenerateContent(lesson.id, bypassDocCache).subscribe({
       next: (event) => {
-        if (event.status !== JobStatus.Completed) return;
-        const updated = this.lessonService.parseLessonResult(event);
-        if (updated) {
-          this.lesson.set(updated);
-          this.notify.success('Lesson content regenerated!');
+        if (event.status === JobStatus.Running) {
+          this.regenerationPhase.set('generating');
+          return;
         }
-        this.isRegenerating.set(false);
+        if (event.status === JobStatus.Completed) {
+          const updated = this.lessonService.parseLessonResult(event);
+          if (updated) {
+            this.lesson.set(updated);
+            this.notify.success('Lesson content regenerated!');
+          }
+          this.isRegenerating.set(false);
+          this.regenerationPhase.set('');
+        }
       },
       error: (err) => {
         console.error('Error regenerating content', err);
         this.notify.error('Failed to regenerate lesson.');
         this.isRegenerating.set(false);
+        this.regenerationPhase.set('');
       }
     });
   }
 
   /**
+   * Resume tracking every job the user has running on this lesson — covers
+   * regenerate, generate-exercise, retry-exercise, and any other lesson-scoped
+   * job type. Each found job dispatches to the matching banner state +
+   * subscribes to the existing SignalR stream so the banner reappears mid-flight.
+   */
+  private restoreInFlightBanners(lessonId: number): void {
+    this.jobsService.listInFlightForEntity('Lesson', lessonId).subscribe({
+      next: (jobs) => {
+        for (const job of jobs) {
+          this.resumeJobByType(job.id, job.type, job.status);
+        }
+      },
+    });
+  }
+
+  private resumeJobByType(jobId: string, type: string, currentStatus: JobStatus): void {
+    const initialPhase: 'queued' | 'generating' = currentStatus === JobStatus.Running ? 'generating' : 'queued';
+    const stream$ = this.jobsService.subscribeToExistingJob(jobId);
+
+    switch (type) {
+      case 'LessonContentGenerate':
+      case 'LessonContentRegenerate':
+        this.isRegenerating.set(true);
+        this.regenerationPhase.set(initialPhase);
+        this.consumeContentJobEvents(stream$);
+        break;
+
+      case 'ExerciseGenerate':
+        this.isGeneratingExercise.set(true);
+        this.exercisePhase.set(initialPhase);
+        this.exerciseLabel.set('a new exercise');
+        this.consumeExerciseJobEvents(stream$);
+        break;
+
+      case 'ExerciseRetry':
+        this.isGeneratingExercise.set(true);
+        this.exercisePhase.set(initialPhase);
+        this.exerciseLabel.set('a remedial exercise');
+        this.consumeExerciseJobEvents(stream$);
+        break;
+
+      // ExerciseReview is per-exercise; resuming would need exerciseId in the
+      // banner. Skip for now — answer eventually lands when the lesson reloads.
+    }
+  }
+
+  /** Shared exercise-job event consumer (used by generate, retry, and resume paths). */
+  private consumeExerciseJobEvents(stream$: ReturnType<LessonService['generateExercise']>): void {
+    const lesson = this.lesson();
+    if (!lesson) return;
+    stream$.subscribe({
+      next: (event) => {
+        if (event.status === JobStatus.Running) {
+          this.exercisePhase.set('generating');
+          return;
+        }
+        if (event.status === JobStatus.Completed) {
+          const exercise = this.lessonService.parseExerciseResult(event);
+          if (exercise && !lesson.exercises.some((e) => e.id === exercise.id)) {
+            lesson.exercises.push(exercise);
+            this.lesson.set({ ...lesson });
+            this.openNewPanel();
+            this.notify.success('Exercise ready.');
+          }
+          this.isGeneratingExercise.set(false);
+          this.exercisePhase.set('');
+        }
+      },
+      error: (err) => {
+        console.error('Error on exercise job', err);
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.notify.error('Exercise generation failed: ' + detail);
+        this.isGeneratingExercise.set(false);
+        this.exercisePhase.set('');
+      },
+    });
+  }
+
+  /**
    * Lazy content gen kicked off when GetLesson returns empty Content.
-   * The component already shows the lesson skeleton; we just stream in
-   * the body when the executor finishes.
+   *
+   * First checks for an in-flight `LessonContentGenerate` job for this
+   * lesson — if one exists (because the user navigated away and came back),
+   * we resume tracking it. Only enqueue a fresh job when there's none
+   * already running. Prevents the double-fire bug where rapid navigation
+   * spawned duplicate jobs and double-billed the user.
    */
   private triggerLazyContentGen(lessonId: number): void {
     this.isRegenerating.set(true);
-    this.lessonService.generateContent(lessonId).subscribe({
+    this.regenerationPhase.set('queued');
+
+    this.jobsService.findInFlight('LessonContentGenerate', 'Lesson', lessonId).subscribe({
+      next: (existing) => {
+        const stream$ = existing
+          ? this.jobsService.subscribeToExistingJob(existing.id)
+          : this.lessonService.generateContent(lessonId);
+        this.consumeContentJobEvents(stream$);
+      },
+      error: () => {
+        // If the lookup itself fails (rare — network blip), fall through to
+        // a fresh job rather than blocking the user.
+        this.consumeContentJobEvents(this.lessonService.generateContent(lessonId));
+      },
+    });
+  }
+
+  private consumeContentJobEvents(stream$: ReturnType<LessonService['generateContent']>): void {
+    stream$.subscribe({
       next: (event) => {
-        if (event.status !== JobStatus.Completed) return;
-        const updated = this.lessonService.parseLessonResult(event);
-        if (updated) this.lesson.set(updated);
-        this.isRegenerating.set(false);
+        if (event.status === JobStatus.Running) {
+          this.regenerationPhase.set('generating');
+          return;
+        }
+        if (event.status === JobStatus.Completed) {
+          const updated = this.lessonService.parseLessonResult(event);
+          if (updated) {
+            this.lesson.set(updated);
+          } else {
+            // Result was missing — re-fetch the lesson to be safe.
+            const id = this.lesson()?.id;
+            if (id) this.lessonService.getLessonById(id).subscribe((l) => this.lesson.set(l));
+          }
+          this.notify.success('Lesson content ready.');
+          this.isRegenerating.set(false);
+          this.regenerationPhase.set('');
+        }
       },
       error: (err) => {
         console.error('Error generating content', err);
-        this.error.set('Failed to generate lesson content: ' + (err.error?.message || err.message));
+        const detail = err.error?.message || err.message || 'unknown error';
+        this.error.set('Failed to generate lesson content: ' + detail);
+        this.notify.error('Lesson content generation failed: ' + detail);
         this.isRegenerating.set(false);
-      }
+        this.regenerationPhase.set('');
+      },
     });
   }
 
