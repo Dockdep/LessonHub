@@ -15,4 +15,3 @@ Standalone-component Angular app with signal-based state, server-side rendering,
 
 - The .NET endpoints these services hit: [../backend/05-api-controllers.md](../backend/05-api-controllers.md)
 - Cloud topology (UI runs as Node SSR): [../01-cloud-architecture.md](../01-cloud-architecture.md)
-- End-to-end flows from UI click → AI: [../flows/](../flows/)

@@ -65,7 +65,7 @@ flowchart LR
 ```
 
 | Function | Purpose |
-|---|---|
+| --- | --- |
 | `search_for_queries(queries, bypass_cache)` | Public entry. Strips blanks, runs each query concurrently, flattens results. |
 | `_run_one_query(query, bypass_cache)` | Per-query: cache lookup → DDG → page-fetch → cache write. Failures yield `[]`, never raise. |
 | `_ddg_search(query)` | Wraps the sync `ddgs.text()` library in a thread. One retry with 2s backoff on rate-limit / `202` / timeout. |
@@ -110,7 +110,7 @@ Internally uses `_embed_batch(texts, api_key, task_type)` with `MAX_BATCH_SIZE=1
 Postgres + pgvector storage.
 
 | Function | Purpose |
-|---|---|
+| --- | --- |
 | `init_schema()` | `CREATE EXTENSION vector` + `CREATE TABLE DocumentChunks` + HNSW + B-tree indexes. Idempotent. |
 | `upsert_chunks(document_id, chunks, embeddings)` | Replace strategy: `DELETE ... WHERE DocumentId=$1` + `INSERT` new rows. Re-ingestion cleanly removes stale chunks. |
 | `search(document_id, query_embedding, top_k=5)` | Cosine-similarity top-k, scoped to a single document. Returns `[{chunk_index, header_path, text, score}]`. |
@@ -144,7 +144,7 @@ Both are called from inside the Jinja2 `_document_context.jinja2` partial that e
 Generic key-value cache backed by the `LessonsAi.DocumentationCache` table. JSON-serialized values, TTL'd via `ExpiresAt`.
 
 | Function | Purpose |
-|---|---|
+| --- | --- |
 | `init_schema()` | `CREATE TABLE IF NOT EXISTS DocumentationCache`. Idempotent. |
 | `get(query_key)` | Returns the cached value if present and not expired; `None` otherwise. |
 | `put(query_key, value)` | Insert-or-update with `ExpiresAt = now + doc_cache_ttl_days`. |

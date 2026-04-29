@@ -46,7 +46,7 @@ flowchart LR
 ## Pages
 
 | Component | What it shows | Key interactions |
-|---|---|---|
+| --- | --- | --- |
 | `Login` | Google One-Tap button | Triggers OAuth → `AuthService.loginWithGoogle` → redirects to `/today`. |
 | `TodaysLessons` | Today's scheduled lessons | Reads `LessonDataStore.todayLessons`. |
 | `LessonPlan` | Form to generate a plan | `lessonType` select switches conditional fields (Technical adds `bypassDocCache`; Language adds `languageToLearn` + `useNativeLanguage`). Optional document picker. Streams generation via SignalR; persists pending plan to `localStorage` (24h TTL) so the user can recover after navigation. |
@@ -60,7 +60,7 @@ flowchart LR
 ## Dialogs
 
 | Dialog | Inputs | Returns |
-|---|---|---|
+| --- | --- | --- |
 | `ConfirmDialog` | `{ title, message, confirmText?, cancelText? }` | `boolean` |
 | `ShareDialog` | `{ planId, planName }` | `void` (mutates via `LessonPlanShareService`) |
 | `GenerateExerciseDialog` | none | `{ difficulty, comment? }` |

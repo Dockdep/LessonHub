@@ -33,7 +33,7 @@ Each service method does one thing: pick the right LLM (`create_plan_llm`, `crea
 ## Crew layer
 
 | Crew | Purpose |
-|---|---|
+| --- | --- |
 | `run_curriculum_crew` | Calls framework analyzer for Technical, fetches RAG outline for Document-grounded plans. |
 | `run_content_crew` | Per-lesson framework analyzer + DDG search; per-lesson RAG chunk fetch. Appends a Sources section to final markdown. |
 | `run_exercise_crew` | RAG-grounded if `document_id` is set. |

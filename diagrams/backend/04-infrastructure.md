@@ -37,7 +37,7 @@ classDiagram
 ## External clients
 
 | Class | Purpose |
-|---|---|
+| --- | --- |
 | `TokenService` | Sign JWTs from `JwtSettings` |
 | `GoogleTokenValidator` | Validate the One-Tap id_token via `Google.Apis.Auth` |
 | `CurrentUser` | Reads `UserContext.UserId` first (BG-job scope), then JWT claim (HTTP scope) |
@@ -60,7 +60,7 @@ flowchart LR
 ```
 
 | Policy | Setting |
-|---|---|
+| --- | --- |
 | Retry | 1 attempt, 2s base, exponential backoff with jitter (5xx / 408 / 429 / network failures) |
 | Circuit breaker | open after 50% failures over 5-min sampling window, 30s break |
 | Per-attempt timeout | 2 minutes |
@@ -107,7 +107,7 @@ flowchart LR
 ```
 
 | Class | Responsibility |
-|---|---|
+| --- | --- |
 | `GenerationHub` | `[Authorize]` SignalR hub at `/hubs/generation`. On connect joins `user-{userId}` group. Server-only — no client-callable methods. |
 | `IJobQueue` / `ChannelJobQueue` | Unbounded `Channel<Guid>`, single-reader, singleton. |
 | `JobBackgroundService` | At startup re-enqueues `Pending` jobs and marks orphaned `Running` rows `Failed`. Main loop reads channel → opens DI scope → loads `Job` → sets `UserContext.UserId` → resolves executor → runs → writes result/error → pushes `JobUpdated` to the user's group. |
@@ -128,7 +128,7 @@ flowchart LR
 [LessonsHub.Infrastructure/Configuration/](../../LessonsHub.Infrastructure/Configuration/) — plain settings classes bound at startup as singletons:
 
 | Class | Bound from |
-|---|---|
+| --- | --- |
 | `JwtSettings` | `JwtSettings:*` |
 | `GoogleAuthSettings` | `GoogleAuth:*` |
 | `LessonsAiApiSettings` | `LessonsAiApi:*` |

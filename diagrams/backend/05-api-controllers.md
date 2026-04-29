@@ -7,7 +7,7 @@ Eight controllers in [LessonsHub/Controllers/](../../LessonsHub/Controllers/). E
 ## Two response patterns
 
 | Pattern | Used by | Shape |
-|---|---|---|
+| --- | --- | --- |
 | **Sync** — `200 OK { value }` | Reads + sync mutations (login, save, edit, share, delete, schedule, complete) | Returns the body inline. |
 | **Async (job)** — `202 Accepted { jobId }` | All AI-generation endpoints + document ingest | Validates synchronously then enqueues; result lands via SignalR (`/hubs/generation`) or polling on `GET /api/jobs/{id}`. |
 
@@ -18,7 +18,7 @@ Async endpoints accept an optional `X-Idempotency-Key` header. Same `(UserId, Ty
 [ServiceResultExtensions.cs](../../LessonsHub/Extensions/ServiceResultExtensions.cs):
 
 | `ServiceErrorKind` | Maps to | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `None` | `200 OkObjectResult` | Happy path |
 | `NotFound` (no message) | `404` empty body | "exists but not yours" — same shape as "doesn't exist" so we don't leak existence |
 | `NotFound` (with message) | `404 { message }` | When leaking existence is fine (e.g. "no user with that email") |

@@ -24,7 +24,7 @@ flowchart TD
 The dependency rule: Domain has zero project deps. Application depends only on Domain. Infrastructure depends on Application (so it can implement its interfaces). API (the host) depends on both, wiring them at startup.
 
 | Project | Purpose |
-|---|---|
+| --- | --- |
 | `LessonsHub.Domain` | Pure entity classes — POCOs, no behaviour |
 | `LessonsHub.Application` | `I*Service` / `IRepository` abstractions, service facades, DTOs, mappers, `ServiceResult<T>`, `ICurrentUser` |
 | `LessonsHub.Infrastructure` | `LessonsHubDbContext`, repository implementations, external clients (Google validator, AI HTTP clients, doc storage), JWT issuer, EF migrations |

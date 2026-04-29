@@ -7,7 +7,7 @@
 ## Route table
 
 | Path | Component | Guard |
-|---|---|---|
+| --- | --- | --- |
 | `/login` | `Login` | none |
 | `/` | redirect → `/today` | — |
 | `/today` | `TodaysLessons` | `authGuard` |

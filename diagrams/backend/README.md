@@ -16,4 +16,3 @@ The .NET API that the Angular UI talks to. Owns the `LessonsHub` Postgres databa
 - Cloud architecture: [../01-cloud-architecture.md](../01-cloud-architecture.md)
 - Database schema: [../03-database.md](../03-database.md)
 - AI service the API calls into: [../ai/01-architecture.md](../ai/01-architecture.md)
-- End-to-end lesson flows: [../flows/](../flows/)

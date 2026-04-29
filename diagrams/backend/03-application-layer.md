@@ -48,7 +48,7 @@ classDiagram
 ## Service-to-controller mapping
 
 | Service | Controller | Endpoints |
-|---|---|---|
+| --- | --- | --- |
 | `AuthService` | `AuthController` | Google login |
 | `UserProfileService` | `UserProfileController` | Profile read/update |
 | `LessonPlanService` | `LessonPlanController` | Plan CRUD + generate + save |
@@ -75,7 +75,7 @@ DTOs are organized by direction:
 Abstractions for things implemented in Infrastructure, so Application can depend on the contract without importing Infrastructure types ([Interfaces/](../../LessonsHub.Application/Interfaces/)):
 
 | Interface | Purpose |
-|---|---|
+| --- | --- |
 | `ITokenService` | JWT issuance |
 | `IGoogleTokenValidator` | Validate the One-Tap id_token |
 | `IUserApiKeyProvider` | Returns the current user's `User.GoogleApiKey` for AI calls |
