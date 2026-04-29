@@ -2,9 +2,9 @@
 
 Angular 21 with full SSR (Node-rendered first paint, then browser hydration). Standalone components, signals for reactive state, Material Design for UI primitives.
 
-> **Source files**: [lessonshub-ui/src/app/](../../lessonshub-ui/src/app/), specifically [app.config.ts](../../lessonshub-ui/src/app/app.config.ts), [app.config.server.ts](../../lessonshub-ui/src/app/app.config.server.ts), [app.routes.ts](../../lessonshub-ui/src/app/app.routes.ts), [main.ts](../../lessonshub-ui/src/main.ts), [main.server.ts](../../lessonshub-ui/src/main.server.ts), [server.ts](../../lessonshub-ui/src/server.ts).
+> **Source files**: [lessonshub-ui/src/app/](../../lessonshub-ui/src/app/), specifically [app.config.ts](../../lessonshub-ui/src/app/app.config.ts), [app.config.server.ts](../../lessonshub-ui/src/app/app.config.server.ts), [app.routes.ts](../../lessonshub-ui/src/app/app.routes.ts), [server.ts](../../lessonshub-ui/src/server.ts).
 
-## High-level architecture
+## High-level
 
 ```mermaid
 flowchart TD
@@ -13,197 +13,56 @@ flowchart TD
   classDef svc fill:#e8f5e9,color:#1a1a1a
 
   browser([Browser]):::ext
-  ssr[Express/Node SSR<br/>server.ts]:::internal
+  ssr[Express SSR<br/>server.ts]:::internal
 
   subgraph app[Angular app]
-    direction TB
     routes[app.routes.ts<br/>10 lazy routes]:::internal
-    pages[Page components<br/>8 standalone]:::internal
-    dialogs[Dialog components<br/>5 standalone]:::internal
-    svcs[Services<br/>+ LessonDataStore]:::svc
+    pages[Pages + dialogs<br/>standalone components]:::internal
+    svcs[Services + LessonDataStore]:::svc
     interceptors[Interceptors<br/>auth + api-base-url]:::internal
     guards[authGuard]:::internal
+    rt[RealtimeService<br/>SignalR]:::svc
   end
 
-  api["/api/* on .NET API"]:::ext
+  api["/api/* + /hubs/* on .NET API"]:::ext
 
   browser --> ssr --> app
   app --> routes --> pages
-  pages --> dialogs
   pages --> svcs
   svcs --> interceptors --> api
   routes --> guards
+  rt --> api
 ```
 
-## Application bootstrap
-
-```mermaid
-sequenceDiagram
-  participant Express as server.ts (Node)
-  participant Bootstrap as bootstrapApplication
-  participant Router as Angular Router
-  participant Auth as AuthService
-  participant Store as LessonDataStore
-
-  Express->>Bootstrap: render request URL
-  Bootstrap->>Bootstrap: Apply appConfig (app.config.server.ts)
-  Bootstrap->>Auth: provideAuthService
-  Auth->>Auth: Detect platform (server vs browser)
-  Note over Auth: SSR pass: skip localStorage<br/>Browser pass: hydrate from localStorage
-  Bootstrap->>Router: parse URL → match route
-  Router->>Router: authGuard check
-  Router->>Bootstrap: render component
-  Bootstrap-->>Express: rendered HTML
-  Express-->>Bootstrap: hydrate on client
-```
-
-`appConfig` (in [app.config.ts](../../lessonshub-ui/src/app/app.config.ts)) provides:
-
-- `provideRouter(routes)` — the lazy route table
-- `provideHttpClient(withInterceptorsFromDi(), withFetch())` — HTTP plumbing with the two interceptors
-- `provideClientHydration()` — for SSR → CSR seamless handoff
-- `provideAnimationsAsync()` — Material's animations
-- `provideNativeDateAdapter()` — Material datepicker
-- `API_BASE_URL` — InjectionToken used by `api-base-url.interceptor`
-
-`appConfigServer` (in [app.config.server.ts](../../lessonshub-ui/src/app/app.config.server.ts)) extends `appConfig` with:
-
-- `provideServerRendering()`
-- `provideServerRoutesConfig(serverRoutes)` — every route is `RenderMode.Server` (SSR for all pages, no SSG)
+`appConfig` ([app.config.ts](../../lessonshub-ui/src/app/app.config.ts)) provides: `provideRouter(routes)`, `provideHttpClient(withInterceptorsFromDi(), withFetch())`, `provideClientHydration()`, `provideAnimationsAsync()`, `provideNativeDateAdapter()`, and the `API_BASE_URL` injection token. `appConfigServer` extends it with `provideServerRendering()` and `provideServerRoutesConfig` (every route is `RenderMode.Server` — SSR for all pages, no SSG, since content is per-user behind auth).
 
 ## Component pattern
 
-Every component is **standalone** — no `NgModule`s. Imports declare the components/directives/pipes directly:
+Every component is **standalone** (no `NgModule`s). Lifecycle: `ngOnInit` for initial data load. State held in `signal()`s; UI binds via the template's `()` invocation syntax (`@if (isLoading()) { … }`).
 
-```typescript
-@Component({
-  selector: 'app-lesson-plan',
-  standalone: true,                          // (default in Angular 21)
-  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, ...],
-  templateUrl: './lesson-plan.html',
-  styleUrl: './lesson-plan.css',
-})
-export class LessonPlan implements OnInit { ... }
-```
+`LessonDataStore` is the cross-component cache: each page that needs lesson data injects the store and reads its signals (`plans`, `sharedPlans`, `todayLessons`). Components call `loadPlans` (cache-aware) on mount and `refreshPlans` after mutations.
 
-Lifecycle: `ngOnInit` for initial data load (services). State held in `signal()`s; UI binds to them via the template's `()` invocation syntax (`@if (isLoading()) { … }`).
+## Real-time updates (SignalR)
 
-## Reactivity model
+Long-running AI generations return `202 { jobId }` and stream lifecycle events through SignalR. `RealtimeService` lazily connects to `/hubs/generation` (sending `?access_token=<jwt>` since browsers can't set headers on WS upgrades). `JobsService.postAndStream<TBody>(url, body, opts?)` is the central helper — POST + auto-injected `X-Idempotency-Key` + WS subscribe + filter-on-terminal. Each per-domain service method (`generateLessonPlan`, `generateContent`, …) is ~3 lines.
 
-```mermaid
-flowchart LR
-  classDef sig fill:#bbdefb,color:#1a1a1a
-  classDef cmp fill:#e3f2fd,color:#1a1a1a
-  classDef svc fill:#e8f5e9,color:#1a1a1a
-
-  store[LessonDataStore]:::svc
-  s_plans[plans signal]:::sig
-  s_shared[sharedPlans signal]:::sig
-  s_today[todayLessons signal]:::sig
-  comp[Component]:::cmp
-  comp_sig["isLoading signal<br/>local"]:::sig
-
-  store --> s_plans
-  store --> s_shared
-  store --> s_today
-  comp --> store
-  comp --> comp_sig
-  s_plans --> tmpl[Template @for]
-  s_today --> tmpl
-  comp_sig --> tmpl
-```
-
-`LessonDataStore` is the cross-component cache. Each page that needs lesson data injects the store and reads its signals. The store provides `loadPlans()` / `refreshPlans()` etc. — components call `loadPlans` (cache-aware) on mount and `refreshPlans` after mutations.
-
-## Material UI surface
-
-Imports across pages (most-to-least common):
-
-- `MatCardModule`, `MatButtonModule`, `MatIconModule`, `MatChipsModule` — every page
-- `MatFormFieldModule`, `MatInputModule`, `MatSelectModule` — forms
-- `MatProgressSpinnerModule`, `MatProgressBarModule` — loading states + upload progress
-- `MatDialogModule` — confirmation, share, regenerate, generate-exercise dialogs
-- `MatTooltipModule` — hover hints on icon buttons
-- `MatDatepickerModule` + `MatNativeDateModule` — calendar picker on `lesson-days`
-
-The lesson markdown content is rendered by `ngx-markdown` (`<markdown [data]="lesson()?.content">`). KaTeX/Prism are wired up too for math + code highlighting in lesson content.
+`JobsService.findInFlight()` / `listInFlightForEntity()` are called on page load to repaint banners for jobs that survived navigation. `subscribeToExistingJob(jobId)` polls the job once before opening the WS to handle the race where the executor finished between page load and the SignalR connect.
 
 ## Server-Side Rendering specifics
 
-```mermaid
-flowchart LR
-  classDef server fill:#fff3e0,color:#1a1a1a
-  classDef both fill:#bbdefb,color:#1a1a1a
-  classDef browser fill:#e8f5e9,color:#1a1a1a
-
-  url[Browser request URL]:::browser
-  caddy[Caddy]
-  ssr[Node SSR<br/>server.ts]:::server
-  hydrate[Browser hydrates]:::browser
-
-  url --> caddy
-  caddy -- non-/api/* --> ssr
-  ssr --> resolve[Render HTML]:::server
-  resolve --> initial[Send rendered HTML to browser]
-  initial --> hydrate
-  hydrate --> live[Live SPA: routes / signals]:::browser
-```
-
-**Platform-aware code**: services inject `PLATFORM_ID` and gate browser-only calls (`localStorage`, `window`) behind `isPlatformBrowser(this.platformId)`. Without this, the SSR pass crashes — see [auth.service.ts](../../lessonshub-ui/src/app/services/auth.service.ts) for the canonical example.
-
-`server.ts` runs an Express app. `NG_ALLOWED_HOSTS=*` is set in docker-compose because Angular 21's SSR has SSRF protection that rejects unknown `Host` headers — Caddy proxies arbitrary `Host` values, so we accept all.
+Services inject `PLATFORM_ID` and gate browser-only calls (`localStorage`, `window`) behind `isPlatformBrowser(this.platformId)`. Without this, the SSR pass crashes — see [auth.service.ts](../../lessonshub-ui/src/app/services/auth.service.ts) for the canonical example. `server.ts` runs an Express app; `NG_ALLOWED_HOSTS=*` is set on the Cloud Run service because Angular 21's SSR has SSRF protection that rejects unknown `Host` headers.
 
 ## Interceptors and guards
 
 [interceptors/](../../lessonshub-ui/src/app/interceptors/):
 
-| Interceptor | Order | Behaviour |
-|---|---|---|
-| `apiBaseUrlInterceptor` | first | If the URL is relative (`/api/...`), prepend the injected `API_BASE_URL`. In docker-compose Caddy this is `''` (relative-to-origin); in dev SSR running on a different port, it's the .NET API URL. |
-| `authInterceptor` | second | If a token is in `localStorage`, add `Authorization: Bearer <token>` to every outgoing request. Skips auth-issuing endpoints. |
+- **`apiBaseUrlInterceptor`** — if the URL is relative (`/api/...`), prepend the injected `API_BASE_URL`. The Angular SSR server reads `API_BASE_URL` from env and injects it into rendered HTML as `<meta name="api-base-url">`; browser-side code reads that meta tag.
+- **`authInterceptor`** — if a token is in `localStorage` (key: `auth_token`), add `Authorization: Bearer <token>`. Skips on the SSR pass (no `localStorage`) — the first server-side render produces no auth header, then the browser hydrates with the token attached.
 
-[guards/auth.guard.ts](../../lessonshub-ui/src/app/guards/auth.guard.ts) is a functional guard:
+`authGuard` ([guards/auth.guard.ts](../../lessonshub-ui/src/app/guards/auth.guard.ts)) is a functional `CanActivateFn`: redirects to `/login` if `AuthService.isLoggedIn()` is `false`.
 
-```typescript
-export const authGuard: CanActivateFn = (route, state) => {
-  const auth = inject(AuthService);
-  const router = inject(Router);
-  if (auth.isLoggedIn()) return true;
-  router.navigate(['/login']);
-  return false;
-};
-```
+## Material UI surface
 
-## Routes by render mode
+Cards, buttons, icons, chips on every page. Forms use `MatFormFieldModule` + `MatInputModule` + `MatSelectModule`. `MatProgressSpinnerModule` / `MatProgressBarModule` for loading + upload progress. `MatDialogModule` for confirm/share/regenerate/generate-exercise dialogs. `MatDatepickerModule` on the calendar page.
 
-All 10 routes share `RenderMode.Server` per [app.routes.server.ts](../../lessonshub-ui/src/app/app.routes.server.ts) — no static prerendering. Each component is lazy-loaded via dynamic import in [app.routes.ts](../../lessonshub-ui/src/app/app.routes.ts), so the initial bundle stays small.
-
-## Folder layout
-
-```
-lessonshub-ui/src/app/
-├── app.ts                        # Root component (RouterOutlet + nav shell)
-├── app.html / app.css            # Root template + global styles
-├── app.config.ts                 # appConfig (browser)
-├── app.config.server.ts          # appConfigServer (SSR)
-├── app.routes.ts                 # Route table
-├── app.routes.server.ts          # Server-side route render modes
-├── api-base-url.ts               # InjectionToken for the API base URL
-├── confirm-dialog/               # Confirmation modal
-├── documents/                    # /documents page
-├── generate-exercise-dialog/     # Modal: difficulty + comment
-├── guards/auth.guard.ts          # authGuard
-├── interceptors/                 # auth + api-base-url
-├── lesson-day{s,s.html,s.ts}/    # /lesson-days calendar page
-├── lesson-detail/                # /lesson/:id reader page
-├── lesson-plan/                  # /lesson-plan generator page
-├── lesson-plan-detail/           # /lesson-plans/:id editor page
-├── lesson-plans/                 # /lesson-plans list page
-├── login/                        # /login Google one-tap
-├── models/                       # TS interfaces
-├── profile/                      # /profile settings page
-├── regenerate-lesson-dialog/     # Modal: regenerate options
-├── services/                     # 8 services + LessonDataStore
-├── share-dialog/                 # Modal: share with email
-└── todays-lessons/               # /today dashboard
-```
+Lesson markdown is rendered by `ngx-markdown` (`<markdown [data]="lesson()?.content">`). KaTeX/Prism are wired up too for math + code highlighting.

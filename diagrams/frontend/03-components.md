@@ -41,149 +41,39 @@ flowchart LR
   docs --> conf
 ```
 
-`ConfirmDialog` is shared — used wherever a destructive action needs confirmation (delete plan, delete document, remove share).
+`ConfirmDialog` is shared — used wherever a destructive action needs confirmation.
 
-## Per-component quick reference
+## Pages
 
-### Pages
+| Component | What it shows | Key interactions |
+|---|---|---|
+| `Login` | Google One-Tap button | Triggers OAuth → `AuthService.loginWithGoogle` → redirects to `/today`. |
+| `TodaysLessons` | Today's scheduled lessons | Reads `LessonDataStore.todayLessons`. |
+| `LessonPlan` | Form to generate a plan | `lessonType` select switches conditional fields (Technical adds `bypassDocCache`; Language adds `languageToLearn` + `useNativeLanguage`). Optional document picker. Streams generation via SignalR; persists pending plan to `localStorage` (24h TTL) so the user can recover after navigation. |
+| `LessonPlans` | List of plans (owned + shared-with-me) | Two sections; each item links to detail page. |
+| `LessonPlanDetail` | Plan editor + lesson list | Edit metadata (incl. all language fields), add/remove lessons, delete plan, open `ShareDialog`. Borrowers see read-only. |
+| `LessonDetail` | Markdown lesson + exercises + resources + nav | Generates content explicitly via the SignalR job pipeline. Sibling nav. Generate/retry exercise → `GenerateExerciseDialog`. Toggles complete; regenerates via `RegenerateLessonDialog`. Restores in-flight banners on load via `JobsService.listInFlightForEntity`. |
+| `LessonDays` | Month calendar + day editor | Pick a date, see/edit assigned lessons; assign new ones from a dropdown of available lessons across owned plans. |
+| `Documents` | Upload + list user's docs | Upload progress via `MatProgressBar`. Status chips (`Pending`/`Ingested`/`Failed`). Each row has a "Generate Plan from this" link. |
+| `Profile` | Email + name + Gemini API key field | Show/hide toggle on the API key. Save triggers `UserProfileService.updateProfile`. |
 
-| Component | File | What it shows | Key interactions |
-|---|---|---|---|
-| `Login` | [login/](../../lessonshub-ui/src/app/login/) | Google One-Tap button | Triggers OAuth flow → `AuthService.loginWithGoogle` → redirects to `/today` |
-| `TodaysLessons` | [todays-lessons/](../../lessonshub-ui/src/app/todays-lessons/) | Today's scheduled lessons (cards) | Reads `LessonDataStore.todayLessons`. Empty state links to `/lesson-days`. |
-| `LessonPlan` | [lesson-plan/](../../lessonshub-ui/src/app/lesson-plan/) | Form to generate a plan | `lessonType` select switches the form (Technical adds `bypassDocCache`; Language adds `languageToLearn` + `useNativeLanguage`). Optional document picker. Calls `LessonPlanService.generateLessonPlan` then `.saveLessonPlan`. |
-| `LessonPlans` | [lesson-plans/](../../lessonshub-ui/src/app/lesson-plans/) | List of plans (owned + shared-with-me) | Two sections; each item links to detail page. |
-| `LessonPlanDetail` | [lesson-plan-detail/](../../lessonshub-ui/src/app/lesson-plan-detail/) | Plan editor + lesson list | Edit plan metadata (incl. all language fields), add/remove lessons, delete plan, open `ShareDialog`. Shared-mode users see read-only. |
-| `LessonDetail` | [lesson-detail/](../../lessonshub-ui/src/app/lesson-detail/) | Markdown lesson + exercises + resources + nav | Lazy-generates content on first view. Sibling nav (`/api/lesson/:id/siblings`). Generate/retry exercise → `GenerateExerciseDialog`; submit answer; toggle complete; regenerate via `RegenerateLessonDialog`. |
-| `LessonDays` | [lesson-days/](../../lessonshub-ui/src/app/lesson-days/) | Month calendar + day editor | Pick a date, see/edit assigned lessons; assign new ones from a dropdown of available lessons across owned plans. |
-| `Documents` | [documents/](../../lessonshub-ui/src/app/documents/) | Upload + list user's docs | File input with `MatProgressBar` for upload. Status chips (`Pending`/`Ingested`/`Failed`). Each row has a "Generate Plan from this" link. |
-| `Profile` | [profile/](../../lessonshub-ui/src/app/profile/) | Email + name + Gemini API key field | The API key field has a show/hide toggle. Save button triggers `UserProfileService.updateProfile`. |
+## Dialogs
 
-### Dialogs
+| Dialog | Inputs | Returns |
+|---|---|---|
+| `ConfirmDialog` | `{ title, message, confirmText?, cancelText? }` | `boolean` |
+| `ShareDialog` | `{ planId, planName }` | `void` (mutates via `LessonPlanShareService`) |
+| `GenerateExerciseDialog` | none | `{ difficulty, comment? }` |
+| `RegenerateLessonDialog` | none | `{ bypassDocCache, comment? }` |
 
-| Dialog | File | Inputs | Returns |
-|---|---|---|---|
-| `ConfirmDialog` | [confirm-dialog/](../../lessonshub-ui/src/app/confirm-dialog/) | `{ title, message, confirmText?, cancelText? }` | `boolean` |
-| `ShareDialog` | [share-dialog/](../../lessonshub-ui/src/app/share-dialog/) | `{ planId, planName }` | `void` (mutates via `LessonPlanShareService`; lists existing shares + adds/removes) |
-| `GenerateExerciseDialog` | [generate-exercise-dialog/](../../lessonshub-ui/src/app/generate-exercise-dialog/) | none | `{ difficulty, comment? }` |
-| `RegenerateLessonDialog` | [regenerate-lesson-dialog/](../../lessonshub-ui/src/app/regenerate-lesson-dialog/) | none | `{ bypassDocCache, comment? }` |
+## Shared `GenerationBanner`
 
-## Class diagrams (key components)
+[generation-banner/](../../lessonshub-ui/src/app/generation-banner/) is a small standalone component used by every page that displays AI-generation progress. Inputs: `phase`, `label`, `etaHint`. Subscription cleanup uses `takeUntilDestroyed(this.destroyRef)` so component re-creation doesn't accumulate listeners.
 
-### `LessonPlan` — the generator form
+## Notes on key components
 
-```mermaid
-classDiagram
-  class LessonPlan {
-    +form FormGroup
-    +lessonTypes string[]
-    +editingLessonIndex number
-    +isLoading signal~boolean~
-    +isSaving signal~boolean~
-    +error signal~string~
-    +saveSuccess signal~boolean~
-    +generatedPlan signal~LessonPlanResponse~
-    +sourceDocument signal~Document?~
-    +availableDocuments signal~Document[]~
-    +planNameEdit FormControl
-    +ngOnInit() void
-    +attachDocumentById(id) void
-    +clearSourceDocument() void
-    +generateLessonPlan() void
-    +saveLessonPlan() void
-    +removeLesson(i) void
-    +resetForm() void
-    +downloadJson() void
-  }
-```
-
-Form controls: `lessonType, planName, topic, numberOfDays, description, nativeLanguage, languageToLearn, useNativeLanguage, bypassDocCache`.
-
-Conditional fields:
-- `bypassDocCache` toggle visible only when `lessonType === 'Technical'`.
-- `languageToLearn` field + `useNativeLanguage` toggle visible only when `lessonType === 'Language'`.
-- `nativeLanguage` label switches between "Language" (Default/Technical) and "Native Language" (Language).
-
-### `LessonDetail` — the reader
-
-```mermaid
-classDiagram
-  class LessonDetail {
-    +lesson signal~Lesson?~
-    +siblingIds signal~SiblingLessonsDto?~
-    +isLoading signal~boolean~
-    +isCompleting signal~boolean~
-    +isRegenerating signal~boolean~
-    +ngOnInit() void
-    +loadLesson(id) void
-    +regenerateLesson() void
-    +openGenerateExercise() void
-    +openRetryExercise(prevReview) void
-    +submitAnswer(exerciseId, answer) void
-    +toggleComplete() void
-    +navigateSibling(direction) void
-  }
-```
-
-The component subscribes to `route.paramMap` so `/lesson/:id` URL changes (prev/next nav) trigger a reload without a full re-render.
-
-### `LessonPlanDetail` — the editor
-
-```mermaid
-classDiagram
-  class LessonPlanDetail {
-    +plan signal~LessonPlanDetail?~
-    +editForm FormGroup
-    +isEditing signal~boolean~
-    +isSaving signal~boolean~
-    +isDeleting signal~boolean~
-    +editLessons FormArray
-    +loadPlan(id) void
-    +startEditing() void
-    +cancelEditing() void
-    +saveEdits() void
-    +confirmDelete() void
-    +openShareDialog() void
-    +removeEditLesson(i) void
-  }
-```
-
-Edit form: `name, topic, description, nativeLanguage, languageToLearn, useNativeLanguage` plus a `FormArray` of per-lesson `{ id?, lessonNumber, name, shortDescription, lessonTopic }`. Sharing/delete are owner-only and gated by `plan().isOwner`.
-
-### `LessonDays` — the calendar
-
-```mermaid
-classDiagram
-  class LessonDays {
-    +selectedDate signal~Date~
-    +monthDays signal~LessonDay[]~
-    +dayLessons signal~LessonDay?~
-    +availablePlans signal~LessonPlanSummary[]~
-    +availableLessons signal~AvailableLesson[]~
-    +selectedPlanId signal~number?~
-    +loadMonth(year, month) void
-    +loadDay(date) void
-    +selectPlan(planId) void
-    +assignLesson(lessonId) void
-    +unassignLesson(lessonId) void
-  }
-```
-
-The picker on the right shows lessons from the user's *owned* plans (you can only schedule what you own). Already-assigned lessons are visibly disabled (`isAssigned: true`).
-
-### `Documents`
-
-```mermaid
-classDiagram
-  class Documents {
-    +documents signal~Document[]~
-    +isUploading signal~boolean~
-    +uploadProgress signal~number~
-    +loadDocuments() void
-    +uploadFile(file) void
-    +deleteDocument(id) void
-    +generatePlanFrom(documentId) void
-  }
-```
-
-Upload uses `DocumentService.upload()` which emits `HttpEventType.UploadProgress`. The component drives `uploadProgress` (0-100) for a `MatProgressBar`.
+- **`LessonPlan`** form controls: `lessonType, planName, topic, numberOfDays, description, nativeLanguage, languageToLearn, useNativeLanguage, bypassDocCache`. `bypassDocCache` is visible only for `Technical`; `languageToLearn` + `useNativeLanguage` only for `Language`; the `nativeLanguage` label switches between "Language" and "Native Language" depending on type.
+- **`LessonDetail`** subscribes to `route.paramMap` so `/lesson/:id` URL changes (prev/next nav) reload without a full re-render.
+- **`LessonPlanDetail`** edit form uses a `FormArray` of `{ id?, lessonNumber, name, shortDescription, lessonTopic }` for inline lesson editing. Sharing/delete are owner-only and gated by `plan().isOwner`.
+- **`LessonDays`** picker shows lessons from the user's *owned* plans only — you can only schedule what you own. Already-assigned lessons render disabled.
+- **`Documents`** upload uses `DocumentService.upload()` which emits `HttpEventType.UploadProgress`; the component drives `uploadProgress` (0-100) for the progress bar.

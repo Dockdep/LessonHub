@@ -1,10 +1,10 @@
 # 01 — Cloud Architecture
 
-The runtime topology of LessonsHub. Three Cloud Run services, one Cloud SQL instance with two databases, one GCS bucket, and a handful of external integrations.
+Three Cloud Run services, one Cloud SQL instance with two databases, one GCS bucket, and a handful of external integrations.
 
-> **Source files**: [docker-compose.example.yml](../docker-compose.example.yml), [terraform/](../terraform/), [Caddyfile](../Caddyfile), [.github/workflows/deploy.yml](../.github/workflows/deploy.yml). For per-resource Terraform inventory see [02-infrastructure-terraform.md](02-infrastructure-terraform.md).
+> **Source files**: [terraform/](../terraform/), [.github/workflows/deploy.yml](../.github/workflows/deploy.yml). For per-resource Terraform inventory see [02-infrastructure-terraform.md](02-infrastructure-terraform.md).
 
-## Production topology (GCP)
+## Production topology
 
 ```mermaid
 flowchart LR
@@ -16,16 +16,16 @@ flowchart LR
   user([Browser]):::external
   google((Google OAuth)):::external
   gemini((Gemini API)):::external
-  ddg((DuckDuckGo HTML)):::external
-  yt((YouTube Data API v3)):::external
+  ddg((DuckDuckGo)):::external
+  yt((YouTube Data API)):::external
 
   subgraph gcp[Google Cloud Platform]
     direction LR
 
     subgraph cr[Cloud Run]
-      ui[lessonshub-ui<br/>Angular 21 SSR<br/>Node 20]:::internal
+      ui[lessonshub-ui<br/>Angular 21 SSR]:::internal
       api[lessonshub<br/>.NET 8 API]:::internal
-      ai[lessons-ai-api<br/>Python 3.12 + FastAPI]:::internal
+      ai[lessons-ai-api<br/>Python + FastAPI]:::internal
     end
 
     subgraph sql[Cloud SQL Postgres 17]
@@ -33,20 +33,16 @@ flowchart LR
       db2[(LessonsAi DB<br/>+ pgvector)]:::data
     end
 
-    gcs[("GCS Bucket<br/>&lt;project&gt;-documents")]:::data
-
+    gcs[("GCS Bucket")]:::data
     sm[Secret Manager]:::internal
     ar[Artifact Registry]:::internal
-
-    subgraph ci[GitHub Actions]
-      gh[deploy.yml]:::cicd
-    end
+    gh[GitHub Actions deploy.yml]:::cicd
   end
 
-  user -- HTTPS<br/>HTML / JS / CSS --> ui
-  user -- HTTPS<br/>/api/* /hubs/* --> api
+  user -- HTML/JS/CSS --> ui
+  user -- /api/* /hubs/* --> api
   ui --> google
-  api -- HTTP IAM-signed<br/>Bearer token --> ai
+  api -- IAM-signed Bearer --> ai
   api --> db1
   api --> gcs
   ai --> db2
@@ -56,93 +52,27 @@ flowchart LR
   ai --> yt
   api --> sm
   ai --> sm
-  ui --> sm
   gh -- WIF OIDC --> cr
-  gh -- push images --> ar
-  cr -- pull images --> ar
+  gh --> ar
+  cr -- pull --> ar
 ```
 
-**Notes**
+## Key facts
 
-- **No proxy in front of Cloud Run.** Each service has its own `*.a.run.app` URL. The Angular SSR server reads the `API_BASE_URL` env var (set on the `lessonshub-ui` service to the .NET service's URL) and injects it into every rendered HTML page as `<meta name="api-base-url">`. The browser-side Angular code reads that meta tag and prefixes every `/api/*` and `/hubs/*` URL with it — so the browser talks **directly** to the API service cross-origin. CORS is configured on the .NET side via `CORS_ALLOWED_ORIGINS` + `AllowCredentials()` (required for SignalR WebSocket negotiate).
-- The Angular UI runs as Server-Side-Rendered Node, *not* as a static SPA. Browsers hit it directly for the initial render; subsequent calls go cross-origin to the API.
-- `.NET` → Python AI is **service-to-service** via a Google ID token (the .NET service uses `IamAuthHandler` to mint tokens; Cloud Run validates them). The AI service is not publicly reachable.
-- All three Cloud Run services connect to Postgres via the **Cloud SQL Auth Proxy** (`/cloudsql/<instance>` Unix socket); no public-IP allowlist.
-- The `lessonshub` (.NET) service runs `--min-instances=1 --no-cpu-throttling --max-instances=1` because SignalR needs an always-warm CPU for the WebSocket and the in-memory job queue can't span instances without a Redis backplane.
-- Workload Identity Federation lets GitHub Actions impersonate `sa-github-deploy` *without* a long-lived JSON key.
-
-## Local-dev topology (docker-compose)
-
-For development on a laptop, the same containers run behind a Caddy reverse-proxy on `:80`. Postgres is a single instance the developer runs locally with two databases (`LessonsHub`, `LessonsAi`) — same shape as prod, different connection details.
-
-```mermaid
-flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
-  classDef internal fill:#e3f2fd,color:#1a1a1a
-  classDef data fill:#f3e5f5,color:#1a1a1a
-
-  user([Browser http://localhost]):::external
-  caddy[Caddy<br/>:80 reverse-proxy]:::internal
-  ui[lessonshub-ui<br/>:4000]:::internal
-  api[lessonshub<br/>:8080]:::internal
-  ai[lessons-ai-api<br/>:8000]:::internal
-  pg[(Postgres 17<br/>host.docker.internal:5432<br/>two databases)]:::data
-  uploads[(./uploads/<br/>local FS volume)]:::data
-  google((Google OAuth)):::external
-  gemini((Gemini API)):::external
-
-  user --> caddy
-  caddy -- /api/* /hubs/* /swagger* --> api
-  caddy -- everything else --> ui
-  ui --> google
-  api --> pg
-  api --> ai
-  api --> uploads
-  ai --> pg
-  ai --> uploads
-  ai --> gemini
-```
-
-**Routing rules** (verbatim from [Caddyfile](../Caddyfile)):
-
-- `/api/*` → `lessonshub:8080` (the .NET API)
-- `/hubs/*` → `lessonshub:8080` (SignalR — Caddy's `reverse_proxy` handles WebSocket upgrades automatically)
-- `/swagger*` → `lessonshub:8080` (Swagger UI for the .NET API)
-- everything else → `lessonshub-ui:4000` (Angular SSR)
-
-The single-origin trick means the browser sees one host (`http://localhost`), so there are no CORS preflights. The Angular `/api/*` URLs and the SignalR client's `/hubs/generation/negotiate` POST work as-is. (Without the `/hubs/*` rule, the WS handshake hits the Angular Express server and gets a 404 with HTML body.)
-
-The same pattern applies to `ng serve --proxy-config` for direct `:4200` dev — see [proxy.conf.json](../lessonshub-ui/proxy.conf.json), which mirrors the same three routes with `ws: true` on `/api` and `/hubs`.
+- **No reverse proxy in front of Cloud Run.** Each service has its own `*.a.run.app` URL. The Angular SSR server injects `API_BASE_URL` into rendered HTML as `<meta name="api-base-url">`; browser-side code reads it and prefixes `/api/*` and `/hubs/*` URLs. The browser talks **directly** to the API service cross-origin. CORS is configured on the .NET side with `AllowCredentials()` (required for SignalR negotiate).
+- **`.NET → Python AI` is service-to-service** via a Google ID token (`IamAuthHandler` mints, Cloud Run validates). The AI service is not publicly reachable.
+- **Postgres** is reached via the Cloud SQL Auth Proxy (Unix socket), no public-IP allowlist.
+- The `lessonshub` service runs `--min-instances=1 --no-cpu-throttling --max-instances=1` because SignalR needs an always-warm CPU and the in-memory job queue can't span instances without a Redis backplane.
+- **WIF** lets GitHub Actions impersonate `sa-github-deploy` without long-lived JSON keys, locked to a single repo via `attribute_condition`.
 
 ## External integrations
 
-```mermaid
-flowchart LR
-  classDef external stroke-dasharray: 5 5,fill:#fff8e7,color:#1a1a1a
-  classDef internal fill:#e3f2fd,color:#1a1a1a
-
-  ui[Angular UI]:::internal
-  api[.NET API]:::internal
-  ai[Python AI]:::internal
-
-  go((Google OAuth<br/>One Tap)):::external
-  gem((Gemini API<br/>generation + embeddings)):::external
-  ddg((DuckDuckGo<br/>HTML scrape)):::external
-  yt((YouTube Data API v3)):::external
-
-  ui --"id_token"--> go
-  api --"validate id_token"--> go
-  ai --"per-user API key"--> gem
-  ai --"site:domain queries"--> ddg
-  ai --"video search"--> yt
-```
-
 | Integration | Used by | Purpose |
 |---|---|---|
-| Google OAuth (One Tap) | `lessonshub-ui` (issue) + `lessonshub` (validate via `IGoogleTokenValidator`) | Auth |
-| Gemini (`google-genai` SDK) | `lessons-ai-api` | LLM calls (CrewAI agents) + text embeddings (`text-embedding-004`) |
-| DuckDuckGo (`ddgs`) | `lessons-ai-api` (`tools/documentation_search.py`) | Free web search for Technical-lesson framework grounding |
-| YouTube Data API | `lessons-ai-api` (`tools/youtube_search_tool.py`) | Video resource lookups |
+| Google OAuth (One Tap) | UI (issue) + .NET (validate) | Auth |
+| Gemini (`google-genai`) | Python AI | LLM calls + embeddings (`text-embedding-004`) |
+| DuckDuckGo (`ddgs`) | Python AI | Free web search for Technical-lesson framework grounding |
+| YouTube Data API | Python AI | Video resource lookups |
 
 ## CI/CD pipeline
 
@@ -159,14 +89,12 @@ sequenceDiagram
 
   Dev->>GH: git push main
   GH->>Actions: trigger deploy.yml
-  Actions->>WIF: OIDC token (audience: GCP)
+  Actions->>WIF: OIDC token
   WIF-->>Actions: federated access token
   Actions->>SA: impersonate
   Actions->>AR: docker push (3 images)
-  Actions->>CR: deploy lessonshub
-  Actions->>CR: deploy lessonshub-ui
-  Actions->>CR: deploy lessons-ai-api
-  Actions->>CR: bind sa-lessonshub<br/>as run.invoker on lessons-ai-api
+  Actions->>CR: deploy 3 services
+  Actions->>CR: bind sa-lessonshub as run.invoker on lessons-ai-api
 ```
 
-The WIF binding is locked to a single GitHub repo via an `attribute_condition` on the OIDC pool provider — other repos cannot mint tokens for this project even if they aim at the same audience. See [terraform/wif.tf](../terraform/wif.tf).
+WIF binding is locked to a single GitHub repo via `attribute_condition` on the OIDC pool provider — see [terraform/wif.tf](../terraform/wif.tf).
