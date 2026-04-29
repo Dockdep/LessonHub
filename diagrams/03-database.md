@@ -5,7 +5,7 @@ Two Postgres databases on the same Cloud SQL instance.
 > **Source files**: [LessonsHub.Domain/Entities/](../LessonsHub.Domain/Entities/), [LessonsHub.Infrastructure/Migrations/](../LessonsHub.Infrastructure/Migrations/), [lessons-ai-api/tools/doc_cache.py](../lessons-ai-api/tools/doc_cache.py), [lessons-ai-api/tools/rag_store.py](../lessons-ai-api/tools/rag_store.py).
 
 | Database | Owner | Schema source | Tables |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `LessonsHub` | .NET API | EF Core migrations | 14 entity tables + `__EFMigrationsHistory` |
 | `LessonsAi` | Python AI | `CREATE TABLE IF NOT EXISTS` at startup | 2 tables + pgvector extension |
 

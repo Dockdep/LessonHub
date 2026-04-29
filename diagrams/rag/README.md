@@ -10,4 +10,4 @@ Document-grounded lesson generation. Users upload books, articles, or notes; the
 - `Document` entity: [../backend/02-domain-model.md](../backend/02-domain-model.md)
 - `DocumentChunks` table + `LessonsAi` DB: [../03-database.md](../03-database.md)
 - Python tools: [../ai/05-tools.md](../ai/05-tools.md)
-- Lesson-content flow that consumes chunks: [../flows/lesson-content.md](../flows/lesson-content.md)
+- AI-side orchestration that consumes chunks: [../ai/03-services-and-crews.md](../ai/03-services-and-crews.md)

@@ -5,7 +5,7 @@ Eight agent factories under [lessons-ai-api/agents/](../../lessons-ai-api/agents
 ## Agent inventory
 
 | Agent factory | Per-type variants? | Persona source |
-|---|---|---|
+| --- | --- | --- |
 | `create_curriculum_agent` | Default / Technical / Language | Jinja template per type |
 | `create_content_writer` | Default / Technical / Language | Jinja template per type |
 | `create_exercise_creator` | Default / Technical / Language | Jinja template per type |

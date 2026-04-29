@@ -2,11 +2,11 @@
 
 Generate personalized study plans on any topic with an AI, then walk through them lesson-by-lesson with exercises and feedback. The user describes what they want to learn (e.g. "Modern Angular 20+", "Spanish A2", "Distributed systems"); a curriculum agent designs the plan; per-lesson content, exercises, and reviews are generated on demand. Technical lessons are grounded in fresh framework documentation (analyzer agent → DDG search); language lessons branch on a *native vs. immersive* mode; user-uploaded books can ground any plan via RAG (pgvector).
 
-> Looking for the documentation? Start at [diagrams/](diagrams/) — every diagram is a Mermaid block that GitHub renders inline. Or browse the same content on the [project Wiki](https://github.com/Dockdep/LessonsHub/wiki).
+> Looking for the documentation? Start at [diagrams/](diagrams/) — every diagram is a Mermaid block that GitHub renders inline. Or browse the same content on the [project Wiki](https://github.com/Dockdep/LessonHub/wiki).
 
 ## Architecture at a glance
 
-Three services + two Postgres databases. Users hit the Angular SSR frontend; the .NET API owns lesson/plan/share state; the Python AI service does all LLM work via CrewAI agents.
+Three Cloud Run services + two Postgres databases. Users hit the Angular SSR frontend cross-origin to the .NET API at `/api/*` and `/hubs/*`; the .NET API owns lesson/plan/share state; the Python AI service does all LLM work via CrewAI agents.
 
 ```mermaid
 flowchart LR
@@ -16,20 +16,23 @@ flowchart LR
 
   user([Browser]):::ext
   ui[lessonshub-ui<br/>Angular 21 SSR]:::int
-  api[lessonshub<br/>.NET 8 API]:::int
+  api[lessonshub<br/>.NET 8 API + SignalR]:::int
   ai[lessons-ai-api<br/>Python FastAPI + CrewAI]:::int
   pg1[(LessonsHub<br/>Postgres)]:::db
   pg2[(LessonsAi<br/>+ pgvector)]:::db
   gemini((Gemini API)):::ext
 
-  user --> ui --> api
+  user -- HTML/JS/CSS --> ui
+  user -- /api/* /hubs/* --> api
   api --> ai
   api --> pg1
   ai --> pg2
   ai --> gemini
 ```
 
-Full diagrams: [diagrams/01-cloud-architecture.md](diagrams/01-cloud-architecture.md).
+AI generations are async: the controller persists a `Job` row, returns `202 { jobId }`, and a `BackgroundService` drives the work. Lifecycle events stream to the browser through a SignalR hub (`/hubs/generation`) per-user group; `Job` table backs deploy-recovery, idempotency dedupe, and in-flight banner repaint after navigation.
+
+Full diagrams: [diagrams/01-cloud-architecture.md](diagrams/01-cloud-architecture.md), [diagrams/backend/04-infrastructure.md](diagrams/backend/04-infrastructure.md) for the SignalR + job pipeline.
 
 ## Repository layout
 
@@ -103,9 +106,8 @@ cd lessonshub-ui && npx tsc --noEmit -p tsconfig.json
 
 ## Documentation
 
-- **[diagrams/](diagrams/)** — comprehensive Mermaid architecture documentation. Renders inline on GitHub. Per-tier deep-dives ([backend/](diagrams/backend/), [ai/](diagrams/ai/), [frontend/](diagrams/frontend/)) plus end-to-end flows ([flows/](diagrams/flows/)) and the RAG pipeline ([rag/](diagrams/rag/)).
-- **[GitHub Wiki](https://github.com/Dockdep/LessonsHub/wiki)** — same content, mirrored from `diagrams/` via [scripts/sync-wiki.py](scripts/sync-wiki.py). Browseable, cross-linkable, and editable in the GitHub UI.
-- **[diagrams/PROMPT.md](diagrams/PROMPT.md)** — the regeneration spec. Run when the codebase has drifted enough that the docs are misleading: `rm -rf diagrams/` and feed `PROMPT.md` to a coding agent.
+- **[diagrams/](diagrams/)** — Mermaid architecture documentation, renders inline on GitHub. Per-tier deep-dives: [backend/](diagrams/backend/), [ai/](diagrams/ai/), [frontend/](diagrams/frontend/), plus the RAG pipeline ([rag/](diagrams/rag/)).
+- **[GitHub Wiki](https://github.com/Dockdep/LessonHub/wiki)** — same content, mirrored from `diagrams/` via [scripts/sync-wiki.py](scripts/sync-wiki.py). Browseable and cross-linkable in the GitHub UI.
 
 To re-sync the Wiki after editing diagrams:
 

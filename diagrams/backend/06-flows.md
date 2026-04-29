@@ -1,6 +1,6 @@
 # Backend — 06 Flows
 
-End-to-end sequences for the .NET API. AI-orchestrated flows (lesson plan / content / exercise) live in [../flows/](../flows/). This file covers .NET-only paths plus the orchestration boundary.
+End-to-end sequences for the .NET API. Covers .NET-only paths plus the orchestration boundary where the executor hands off to the Python AI service.
 
 ## Auth: Google One-Tap → JWT
 
@@ -112,7 +112,7 @@ sequenceDiagram
   DC->>DS: UploadAsync(input)
   DS->>DR: Add(Document {Status=Pending}) + SaveChangesAsync
   DS->>Storage: SaveAsync → gs://...
-  DS->>DR: doc.StorageUri = gs://...; SaveChangesAsync
+  DS->>DR: doc.StorageUri = gs://... + SaveChangesAsync
   DS-->>DC: Ok(DocumentDto)
   DC-->>User: 202 { document, jobId }
 
@@ -120,14 +120,14 @@ sequenceDiagram
   Job->>RAG: IngestAsync(docId, storageUri, apiKey)
   RAG->>AI: POST /api/rag/ingest
   AI-->>RAG: { chunkCount }
-  Job->>DR: doc.IngestionStatus="Ingested"; ChunkCount=N
+  Job->>DR: doc.IngestionStatus="Ingested", ChunkCount=N
 ```
 
 If RAG ingestion fails, the executor sets `IngestionStatus = "Failed"` + truncates the error to `IngestionError`. The document row stays so the user can see what went wrong and re-upload.
 
 ## AI hand-off boundary
 
-The deeper details of plan/content/exercise generation live in [../flows/](../flows/). On the .NET side, the executor calls the existing service method, which calls `LessonsAiApiClient` through the resilience pipeline:
+The deeper details of plan/content/exercise generation live in [../ai/03-services-and-crews.md](../ai/03-services-and-crews.md). On the .NET side, the executor calls the existing service method, which calls `LessonsAiApiClient` through the resilience pipeline:
 
 ```mermaid
 sequenceDiagram

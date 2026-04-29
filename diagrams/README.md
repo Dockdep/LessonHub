@@ -16,7 +16,6 @@ Mermaid-only architecture documentation for the LessonsHub project. Every diagra
 - [ai/](ai/) — Python FastAPI + CrewAI. Routes → services → crews → agents/tasks → tools.
 - [frontend/](frontend/) — Angular 21 (standalone components + signals + SSR).
 
-### End-to-end flows
+### RAG pipeline
 
-- [flows/](flows/) — Lesson plan generation, lesson content generation, exercise lifecycle, resources research.
 - [rag/](rag/) — Document upload → chunk → embed → pgvector. Per-lesson chunk retrieval at generation time.

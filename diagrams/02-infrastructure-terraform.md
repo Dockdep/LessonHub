@@ -69,7 +69,7 @@ Connection strings are composed in [terraform/secrets.tf](../terraform/secrets.t
 Four service accounts with role separation:
 
 | SA | Roles |
-|---|---|
+| --- | --- |
 | `sa-lessonshub` | `cloudsql.client`, `secretAccessor`, GCS `objectAdmin`, plus `run.invoker` on the AI service (bound by deploy workflow, not Terraform) |
 | `sa-lessonshub-ui` | `cloudsql.client`, `secretAccessor` |
 | `sa-lessons-ai-api` | `cloudsql.client`, `secretAccessor`, GCS `objectViewer` |
@@ -80,7 +80,7 @@ GCS access is asymmetric: the .NET service writes (uploads/deletes) and the Pyth
 ## Secret Manager
 
 | Secret | Source | Consumer |
-|---|---|---|
+| --- | --- | --- |
 | `db-url-lessonshub` | composed from SQL instance + user | .NET API (Npgsql) |
 | `db-url-lessonsai` | composed from SQL instance + user | Python AI (asyncpg) |
 | `jwt-secret` | `random_password` (64 chars) | .NET API (signs JWTs) |

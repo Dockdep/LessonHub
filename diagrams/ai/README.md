@@ -14,5 +14,4 @@ The Python service that does all LLM work. Uses [CrewAI](https://github.com/crew
 
 - The .NET service that calls in: [../backend/04-infrastructure.md](../backend/04-infrastructure.md) (`LessonsAiApiClient`, `RagApiClient`, `IamAuthHandler`)
 - The Postgres `LessonsAi` database: [../03-database.md](../03-database.md)
-- End-to-end lesson generation flows: [../flows/](../flows/)
 - RAG pipeline: [../rag/](../rag/)

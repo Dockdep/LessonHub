@@ -1,6 +1,6 @@
 # Frontend — 06 Flows
 
-Component-level user flows. AI-orchestrated detail (what happens *inside* a `generate` call once it leaves the UI) is in [../flows/](../flows/).
+Component-level user flows. AI-orchestrated detail (what happens *inside* a `generate` call once it leaves the UI) is in [../ai/03-services-and-crews.md](../ai/03-services-and-crews.md) and [../backend/06-flows.md](../backend/06-flows.md).
 
 ## Login (Google One Tap)
 
@@ -20,7 +20,7 @@ sequenceDiagram
   L->>Auth: loginWithGoogle(idToken)
   Auth->>API: POST /api/auth/google
   API-->>Auth: { token, user }
-  Auth->>Auth: localStorage.setItem auth_token; tokenSignal.set
+  Auth->>Auth: localStorage.setItem auth_token + tokenSignal.set
   Auth-->>L: ok
   L->>Router: navigate('/today')
 ```
@@ -54,7 +54,7 @@ sequenceDiagram
   LP->>LPS: saveLessonPlan(...)
   LPS->>API: POST /api/lessonplan/save
   API-->>LPS: { lessonPlanId }
-  LP->>LP: notify.success; clear localStorage
+  LP->>LP: notify.success + clear localStorage
 ```
 
 The localStorage backup means the user can navigate away and return without re-paying for generation. On revisit, `LessonPlan.ngOnInit` calls `JobsService.findInFlight('LessonPlanGenerate')` to resume an in-flight job, or reads `localStorage['lessonshub:pendingPlan']` for an already-completed-but-unsaved one.
@@ -79,7 +79,7 @@ sequenceDiagram
     User->>LD: click Generate Content
     LD->>LS: generateContent(42)
     LS->>Jobs: postAndStream
-    Jobs-->>LD: streaming events; final Completed → reload lesson
+    Jobs-->>LD: streaming events, final Completed → reload lesson
   end
 ```
 
@@ -173,7 +173,7 @@ sequenceDiagram
   end
   API-->>DS: 202 { document, jobId }
   DS-->>Docs: document
-  Note over Docs: SignalR job pipeline drives ingest;<br/>document row updates from Pending → Ingested
+  Note over Docs: SignalR job pipeline drives ingest —<br/>document row updates from Pending → Ingested
 ```
 
 If ingestion fails, the document still appears in the list with `status: "Failed"` and an `ingestionError` — the user can re-upload.

@@ -41,10 +41,10 @@ sequenceDiagram
   Embed-->>Route: vector(768) embeddings
 
   Route->>Store: upsert_chunks(documentId, chunks, embeddings)
-  Store->>PG: BEGIN; DELETE WHERE DocumentId; INSERT × N; COMMIT
+  Store->>PG: BEGIN → DELETE WHERE DocumentId → INSERT × N → COMMIT
   Store-->>Route: chunk_count
   Route-->>Job: { documentId, chunkCount }
-  Job->>DS: doc.IngestionStatus = "Ingested"; ChunkCount = N
+  Job->>DS: doc.IngestionStatus = "Ingested", ChunkCount = N
 ```
 
 ## State transitions

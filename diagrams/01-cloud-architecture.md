@@ -68,7 +68,7 @@ flowchart LR
 ## External integrations
 
 | Integration | Used by | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | Google OAuth (One Tap) | UI (issue) + .NET (validate) | Auth |
 | Gemini (`google-genai`) | Python AI | LLM calls + embeddings (`text-embedding-004`) |
 | DuckDuckGo (`ddgs`) | Python AI | Free web search for Technical-lesson framework grounding |

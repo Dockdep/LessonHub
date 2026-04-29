@@ -87,7 +87,7 @@ flowchart TD
 ## Module responsibilities
 
 | Module | Role |
-|---|---|
+| --- | --- |
 | `routes/` | FastAPI `APIRouter`s; per-endpoint Pydantic→context conversion |
 | `services/` | Thin static facades — pick an LLM (per-task model from `config.py`), forward to a crew |
 | `crews/` | The actual orchestration. Build agent + task, run via CrewAI, wrap with quality retry |

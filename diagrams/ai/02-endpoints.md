@@ -7,7 +7,7 @@ Eight HTTP endpoints across two routers + one health probe.
 ## Endpoint inventory
 
 | Method | Path | Request | Response | Service |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | POST | `/api/lesson-plan/generate` | `LessonPlanRequest` | `LessonPlanResponse` | `CurriculumService.generate_plan` |
 | POST | `/api/lesson-content/generate` | `LessonContentRequest` | `LessonContentResponse` | `ContentService.generate_content` |
 | POST | `/api/lesson-exercise/generate` | `LessonExerciseRequest` | `LessonExerciseResponse` | `ExerciseService.generate_exercise` |
